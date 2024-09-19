@@ -6,6 +6,9 @@ from collections import Counter
 from scipy.stats import linregress
 from matplotlib.ticker import FuncFormatter
 from os.path import exists, dirname, abspath, join
+from os import chmod
+from tqdm import tqdm
+import re
 import time
 import json
 import networkx as nx
@@ -13,65 +16,84 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 
+file_existing = False
+
+# Subroutine to wait before the next step loads, ensuring that each step of the program is run correctly
 def wait():
         x = input('Press Enter')
 
-
-script_dir = dirname(abspath(__file__))
-
 def entering_desired_hashtag():
-        while True:
-            desired_hashtag = input('Please enter the hashtag you wish to search (with the # symbol as well): ')
-
-            if '#' not in desired_hashtag or desired_hashtag.index('#') != 0:  # Ensure hashtag does not include '#'
-                print('Invalid tag')
+    while True:
+        try:
+            options = int(input('1) Enter your hashtag\n2) Quit \nEnter here: '))
+            if options == 1:
+                desired_hashtag = input('Please enter the hashtag you wish to search (with the # symbol as well): ')
+                if re.match(r'^#\s*$', desired_hashtag): # Regex to check if it's only '#' or '#' followed by whitespace
+                    print('Invalid tag. Hashtag must not be just the symbol itself or followed by only whitespace.')
+                elif not desired_hashtag.startswith('#'):  # Ensure the hashtag starts with '#'
+                    print('Invalid tag. Hashtag must start with #.')
+                else:
+                    return desired_hashtag  # Return valid hashtag
+            elif options == 2:
+                quit() # Quits the program
             else:
-                return desired_hashtag  # Return valid hashtag
+                print('\nEnter a valid option.\n')
+        except ValueError:
+            print('\nEnter a number of an option.\n') # Ask user to enter a number if the input isn't an integer
 
 tagname = entering_desired_hashtag()
 
-def web_scrape():
-    
-    def captions_seenids(desired_hashtag):
-        print('Received hashtag:', desired_hashtag)
+# Generates the file path from the program itself to ensure no accidental file creations are placed elsewhere
+script_dir = dirname(abspath(__file__)) 
 
-        # Construct the file paths
-        
-        hashtag_filename_captions = f'{desired_hashtag}captions.json'
-        hashtag_filename_seenids = f'{desired_hashtag}seenids.json'
-        captions_file_path = join(script_dir, hashtag_filename_captions)
-        seenids_file_path = join(script_dir, hashtag_filename_seenids)
-        
+# Construct the file paths
+hashtag_filename_captions = f'{tagname}captions.json'
+hashtag_filename_seenids = f'{tagname}seenids.json'
+captions_file_path = join(script_dir, hashtag_filename_captions)
+seenids_file_path = join(script_dir, hashtag_filename_seenids)
+
+def captions_seenids(desired_hashtag):
+        print(f'Received hashtag: {desired_hashtag}')
         # Check if the file already exists
         if exists(captions_file_path):
+            global file_existing
             print(f'A file for the hashtag "{desired_hashtag}" already exists. So, existing captions and seen IDs may be skipped when scraping.')
+            file_existing = True
         else:
             try:    
                 with open(captions_file_path, 'w') as f:
-                    pass  # Create the file writing only an empty list so it can be read and appended to
+                    pass  # Create the file emptily 
             except Exception as e:
                 print(f"An error occurred: {e}")
         
         # Check if the file already exists
         if exists(seenids_file_path):
             print(f'A file for the hashtag "{desired_hashtag}" already exists. So, existing captions and seen IDs may be skipped when scraping.')
+            file_existing = True
         else:
             try:    
                 with open(seenids_file_path, 'w') as f:
-                    pass  # Create the file writing only an empty list so it can be read and appended to
+                    pass  # Create the file emptily
             except Exception as e:
                 print(f"An error occurred: {e}")
 
+captions_seenids(tagname) 
 
-    captions_seenids(tagname)   
+def web_scrape():
+    print('IMPORTANT: Every time a "Press Enter" prompt appears, please check to see if TikTok is making you perform a reCAPTCHA test.\nPlease do not touch the WebDriver tab at all unless the prompt is required to be completed')
     
-    
+    wait()  
+
     driver = webdriver.Chrome()
-    # We can change the browser to Chrome, Firefox, etc
+    # Load the search engine browser
+    # We can change the search engine to Chrome, Firefox, etc
 
     driver.get("https://www.tiktok.com")
     # Load the TikTok page
 
+    # The cookies of the placeholder TikTok account made for this program (strictly used only for the function of this program)
+    
+    # If pasting the cookies of a different TikTok account using web extensions into this variable, you must change the value of 'sameSite' to either 'Lax', 'Strict' or 'None's
     cookies = [
     {
         "domain": ".tiktok.com",
@@ -508,6 +530,7 @@ def web_scrape():
     
     wait()
     
+    # Load the account's cookies into the browser
     for cookie in cookies:
         driver.add_cookie(cookie)
     
@@ -515,10 +538,10 @@ def web_scrape():
     
     driver.refresh()
     # After having refreshed the page, your WebDriver instance should have logged into the account
-    
+    wait()
     # To find the search button, we will use the find_element function to insert the target hashtag
     search_bar = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div/div[2]/div/form/input')
-    # Enter the desired hashtag through Webdriver
+    # Enter the desired hashtag
     search_bar.send_keys(tagname)
     search_bar.send_keys(Keys.ENTER)
     
@@ -528,57 +551,58 @@ def web_scrape():
     video_button = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[3]/div')
     video_button.click()
 
-    # Loading the captions
 
     wait()
 
-    with open(f'{script_dir}\{tagname}captions.json') as f:
+    # Loading all the captions from the file
+    with open(captions_file_path) as f:
         first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
         if not first_line:
             print("The file is empty.")
             # Break out of the `with open` block
+            tags = list()
         else:
             tags = list(json.load(f))
-            print(len(tags))
 
-    # Print the number of however many tags exist in the captions.json file
 
     wait()
 
-    # Loading the seen video IDs
-
-    with open(f'{script_dir}\{tagname}seen.json') as f:
+    # Loading the seen video IDs from the file
+    with open(seenids_file_path) as f:
         first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
         if not first_line:
             print("The file is empty.")
             # Break out of the `with open` block
+            seen_ids = set()
         else:    
             seen_ids = set(json.load(f))
-            print(len(seen_ids))
         
     wait()
     
+    # Locate the element of the video tab itself which contains the video element objects
     resultsTab = driver.find_element(By.ID, 'tabs-0-panel-search_video')
 
     wait()
 
+    # Gather all the videos by their individual elements
     postsTab = resultsTab.find_elements(By.CLASS_NAME, 'e19c29qe10')
     postsTabSize = len(postsTab)
 
     wait()
 
     while True: 
+        # Scrolls to the bottom of the page automatically
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(5)
+        time.sleep(5) # Every 5 seconds, gather all the video objects currently loaded
         postsTab = resultsTab.find_elements(By.CLASS_NAME, 'e19c29qe10')
-        if len(postsTab) == postsTabSize:
+        if len(postsTab) == postsTabSize: # If the size of the current posts loaded is the same as the amount of all the posts together, break out the loop
             break
         else:
-            postsTabSize = len(postsTab)
+            postsTabSize = len(postsTab) # Update the current amount of videos found under the hashtag
     
     wait()
     
-        # Iterate through each found post
+    # Iterate through each post found
     for post in postsTab:
         # Obtain the link of every post found 
         postsTabClassName = post.find_element(By.CLASS_NAME, "e1cg0wnj1")
@@ -618,28 +642,24 @@ def web_scrape():
         
     wait()
     
-    with open(f'{script_dir}\{tagname}captions.json', 'a') as a:
+    with open(captions_file_path, 'a') as a:
         json.dump(tags, a)
 
-    with open(f'{script_dir}\{tagname}seenids.json', 'a') as b:
+    with open(seenids_file_path, 'a') as b:
         # Convert to list
         json.dump(list(seen_ids), b)
-    
-    
 
 def network_creation():
-    # f'{script_dir}\{tagname}captions.json'
-    # put this back in later after testing
-    with open(f'C:\\Users\\andy\\Desktop\\desktop stuff\\nea files\\tiktokscrape\\alevelnea\\captions.json') as f:
+
+    with open(captions_file_path) as f:
         captions = json.load(f)
-        print(captions)
         
-    
+    # Create a NetworkX graph
     hashtag_graph = nx.Graph()
     
     wait()
     
-       # Process captions to create the hashtag graph
+    # Process captions to create the hashtag graph
     for caption in captions:
         # Gather each pair of hashtags in a caption
         for i in range(len(caption)):
@@ -650,44 +670,43 @@ def network_creation():
                 if hashtag_graph.has_edge(tag1, tag2):
                     hashtag_graph[tag1][tag2]['weight'] += 1
                 else:
-                    hashtag_graph.add_edge(tag1, tag2, weight=1)
+                    hashtag_graph.add_edge(tag1, tag2, weight=1) # If a connection between 2 hashtags does not exist, set their edge weight to 1
 
     wait()
 
-    # Remove comments when finished below
-    # main_node = f'{tagname}'[1:]
-    # hashtag_graph.remove_node(main_node)
+
+    main_node = f'{tagname}'[1:]
+    hashtag_graph.remove_node(main_node) # Remove the hashtag that was searched from the graph (as it will be #1 anyway due to it being the hashtag every video will contain, so it will be pointless to mention)
 
     wait()
 
     # Extract the largest connected component
     hashtag_graph = hashtag_graph.subgraph(max(nx.connected_components(hashtag_graph), key=len))
 
-    # Number of nodes and edges
+
     n = hashtag_graph.number_of_nodes()
     e = hashtag_graph.number_of_edges()
 
-    print(f"{n} nodes and {e} edges")
-
-    # Calculate betweenness centrality and closeness centrality
-    # Step 1: Map node labels to integer indices
+    # Map node labels to integer indices
     label_to_index = {label: idx for idx, label in enumerate(hashtag_graph.nodes())}
     index_to_label = {idx: label for label, idx in label_to_index.items()}
 
-    # Step 2: Create an adjacency matrix using integer indices
+    # Create an adjacency matrix using integer indices
     n = len(label_to_index)
     adj_matrix = np.zeros((n, n))
 
-    for u, v in hashtag_graph.edges():
+    # Add progress bar for adjacency matrix creation
+    for u, v in tqdm(hashtag_graph.edges(), desc="Creating Adjacency Matrix", unit="edge", total=e):
         i, j = label_to_index[u], label_to_index[v]
         adj_matrix[i, j] = adj_matrix[j, i] = 1  # Assuming undirected graph
 
-    # Step 3: Calculate centrality values
+    # Calculate centrality values
     def calculate_betweenness_centrality(adj_matrix):
         n = adj_matrix.shape[0]
         betweenness = {i: 0.0 for i in range(n)}
 
-        for s in range(n):
+        # Progress bar for betweenness calculation
+        for s in tqdm(range(n), desc="Calculating Betweenness Centrality", unit="node", total=n):
             stack = []
             predecessors = [[] for _ in range(n)]
             sigma = np.zeros(n)
@@ -717,14 +736,14 @@ def network_creation():
                     betweenness[w] += delta[w]
 
         betweenness = {node: bc / 2 for node, bc in betweenness.items()}
-
         return betweenness
 
     def calculate_closeness_centrality(adj_matrix):
         n = adj_matrix.shape[0]
         closeness = {i: 0.0 for i in range(n)}
 
-        for i in range(n):
+        # Progress bar for closeness calculation
+        for i in tqdm(range(n), desc="Calculating Closeness Centrality", unit="node", total=n):
             shortest_paths = np.full(n, np.inf)
             shortest_paths[i] = 0
             visited = np.zeros(n, dtype=bool)
@@ -746,32 +765,180 @@ def network_creation():
 
         return closeness
 
+    # Calculate centrality measures with progress tracking in the functions
     betweenness_centrality = calculate_betweenness_centrality(adj_matrix)
     closeness_centrality = calculate_closeness_centrality(adj_matrix)
+    eigenvector_centrality = nx.eigenvector_centrality(hashtag_graph)
+    weighted_eigenvector = nx.eigenvector_centrality(hashtag_graph, weight='weight')
 
-    # Step 4: Map results back to original labels
+    # Map results back to original labels
     betweenness_centrality = {index_to_label[i]: bc for i, bc in betweenness_centrality.items()}
     closeness_centrality = {index_to_label[i]: cc for i, cc in closeness_centrality.items()}
 
-    # Output the results
-    # Sort and get the top 10 highest betweenness centrality values
-    top_10_betweenness = sorted(betweenness_centrality.items(), key=lambda item: item[1], reverse=True)[:10]
 
-    # Sort and get the top 10 highest closeness centrality values
-    top_10_closeness = sorted(closeness_centrality.items(), key=lambda item: item[1], reverse=True)[:10]
-    
+    # Sort and get the top 20 highest betweenness centrality nodes
+    top_20_betweenness = [node for node, _ in sorted(betweenness_centrality.items(), key=lambda x: x[1], reverse=True)[:20]]
 
+    # Sort and get the top 20 highest closeness centrality nodes
+    top_20_closeness = [node for node, _ in sorted(closeness_centrality.items(), key=lambda x: x[1], reverse=True)[:20]]
+    
+    # Sort and get the top 20 highest eigenvector centrality nodes
+    top_20_eigenvector = [node for node, _ in sorted(eigenvector_centrality.items(), key=lambda x: x[1], reverse=True)[:20]]
+    
+    # Sort and get the top 20 highest eigenvector centrality nodes (weighted)
+    top_20_eigen_weighted = [node for node, _ in sorted(weighted_eigenvector.items(), key=lambda x: x[1], reverse=True)[:20]]
 
-    wait()
-    
-    
+    # Get degree and weighted degree and sort to get the top 20 nodes for each
     node_degrees = hashtag_graph.degree()
-    top_10_degrees = sorted(node_degrees, key=lambda x: x[1], reverse=True)[:10]
-    
+    top_20_degrees = [node for node, _ in sorted(node_degrees, key=lambda x: x[1], reverse=True)[:20]]
+
     weighted_node_degrees = hashtag_graph.degree(weight='weight')
-    top_10_weighted_degrees = sorted(weighted_node_degrees, key=lambda x: x[1], reverse=True)[:10]
+    top_20_weighted_degrees = [node for node, _ in sorted(weighted_node_degrees, key=lambda x: x[1], reverse=True)[:20]]
+
+    # Combine all the top 20 lists of hashtags to get an average list based on number of occurences of a node appearing in the list
+    all_nodes = top_20_betweenness + top_20_closeness + top_20_degrees + top_20_weighted_degrees + top_20_eigenvector + top_20_eigen_weighted
+
+    # Count occurrences of each node across the combined list
+    node_occurrences = {}
+    for node in all_nodes:
+        if node in node_occurrences:
+            node_occurrences[node] += 1
+        else:
+            node_occurrences[node] = 1
+
+    # Sort nodes by their frequency of occurrence and get the top 20 most frequent nodes
+    top_20_nodes_overall = sorted(node_occurrences.keys(), key=lambda x: node_occurrences[x], reverse=True)[:20]
+
+    while True:
+        export_to_gephi = input('Would you like to export to Gephi?\nEnter Y/N: ').lower()
+        if export_to_gephi == 'y':
+            nx.write_gexf(hashtag_graph, f'{script_dir}/{tagname}graph.gexf')  # Creates a .gexf file to view in network graphing software
+            print('Exported!')
+            break
+        elif export_to_gephi == 'n':
+            break
+        else:
+            print('Enter Y/N please.')
     
-    print(top_10_degrees)
-    print(top_10_weighted_degrees)
+    # Output the results
+    print("\nTop 20 nodes overall (combined):")
+    for node in top_20_nodes_overall:
+        print(node)
     
-network_creation()
+    wait()
+
+    try:
+        if exists(f'{script_dir}/{tagname}_top_20_list.txt'):
+            print('A top 20 list of hashtags to put in your caption already exists.')
+        else:
+            with open(f'{script_dir}/{tagname}_top_20_list.txt', 'w') as f:
+                for node in top_20_nodes_overall:
+                    f.write(f'#{node}\n')
+            chmod(f'{script_dir}/{tagname}_top_20_list.txt', 0o444)
+            print('A list of your hashtags has been made into a file.')
+    except FileNotFoundError as e:
+        print(f'An error occurred: {e}')
+
+
+script = f'''
+Welcome! This program obtains the optimal hashtags to put in your TikTok caption for your videos based on the content that you make.
+
+An internet connection is *REQUIRED* for Step 1.
+{'\nDue to files for '+ tagname + ' already existing,' + ' if the file has not been mentioned that it is empty then please run Step 1.' + '\nOtherwise, run Step 2 to calculate your list of hashtags if not done already.' + '\nIf so, there is a list of hashtags in the same directory as the program.'  if file_existing else ''} 
+Enter your choice below:
+
+1) Step 1: Gathering the data for {tagname}
+2) Step 2: Calculating the list of hashtags from {tagname} to put in your caption 
+3) Quit the program
+4) Return to start menu
+
+Enter here: '''
+# Line 847 uses a conditional statement within the F string such that if files for the hashtag that was inputted already exists, then write out a message that states that you can just retrieve the list via the text file produced
+
+while True:
+    try:
+        option = int(input(script))
+        if option == 1:
+            web_scrape()
+        elif option == 2:
+            network_creation()
+        elif option == 3:
+            quit()
+        elif option == 4:
+            tagname = entering_desired_hashtag()
+        else:
+            print('Enter a choice available.')
+    except ValueError:
+        print('Enter a number please.')
+        
+        
+# enter code to force the user to do the reCAPTCHA test but then before and after the test, disable any possible human interaction with the webdriver tab
+'''
+# Focus on reCAPTCHA element
+captcha = driver.find_element(By.ID, 'recaptcha-anchor')  # or appropriate locator
+driver.execute_script("arguments[0].scrollIntoView(true);", captcha)
+captcha.click()  # Optionally start the process by clicking the CAPTCHA box
+
+# Inject JS to disable user interaction for everything except reCAPTCHA
+driver.execute_script("""
+    document.body.style.pointerEvents = 'none';  // Disable all pointer events
+    var captcha = document.querySelector('#recaptcha-anchor');
+    captcha.style.pointerEvents = 'auto';  // Re-enable pointer events for reCAPTCHA
+""")
+
+# Open the CAPTCHA in a new tab
+driver.execute_script("window.open('');")  # Open a new tab
+driver.switch_to.window(driver.window_handles[-1])  # Switch to the new tab
+
+# Load the CAPTCHA URL here (use the actual URL containing the CAPTCHA)
+driver.get("URL_with_CAPTCHA")
+
+
+import time
+from selenium.webdriver.common.by import By
+
+def wait_for_captcha():
+    while True:
+        try:
+            # Assuming the CAPTCHA status changes (e.g., greying out after completion)
+            if driver.find_element(By.CLASS_NAME, 'recaptcha-checkbox-checked'):
+                print('CAPTCHA solved.')
+                break
+        except:
+            pass
+        time.sleep(1)  # Poll every second to check if CAPTCHA is done
+
+
+driver.execute_script("""
+    var overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    overlay.style.zIndex = '9999';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.innerHTML = '<h1 style="color: white;">Please complete the CAPTCHA</h1>';
+    document.body.appendChild(overlay);
+""")
+
+
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+# Run headless browser initially
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+driver = webdriver.Chrome(options=chrome_options)
+
+# Do web scraping...
+
+# Detect CAPTCHA and switch to normal mode
+chrome_options.headless = False
+driver = webdriver.Chrome(options=chrome_options)
+
+
+'''
