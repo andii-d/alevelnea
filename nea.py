@@ -2,25 +2,50 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 from collections import Counter
 from scipy.stats import linregress
 from matplotlib.ticker import FuncFormatter
-from os.path import exists, dirname, abspath, join
+from os.path import abspath, dirname, exists, join
 from os import chmod
 from tqdm import tqdm
+import networkx as nx
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import platform
 import re
 import time
 import json
-import networkx as nx
-import json
-import matplotlib.pyplot as plt
-import numpy as np
 
+# Boolean variables used for F string condition statements 
 file_existing = False
+test_var = False
 
 # Subroutine to wait before the next step loads, ensuring that each step of the program is run correctly
 def wait():
         x = input('Press Enter')
+
+def show_popup(message, title="TikTok Reminder"):
+    os_type = platform.system()
+
+    if os_type == "Windows":
+        # Windows: Use PowerShell to create a pop-up message box
+        os.system(f'powershell -command "Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.Interaction]::MsgBox(\'{message}\', 0, \'{title}\')"')
+
+    elif os_type == "Darwin":
+        # macOS: Use AppleScript via osascript
+        os.system(f'osascript -e \'display alert "{title}" message "{message}"\'')
+
+    elif os_type == "Linux":
+        # Linux: Use zenity to create a pop-up (requires zenity to be installed)
+        zenity_exists = os.system('which zenity > /dev/null 2>&1') == 0
+        if zenity_exists:
+            os.system(f'zenity --info --text="{message}" --title="{title}"')
+        else:
+            print(f"Error: 'zenity' not found. Please install zenity or use another pop-up method.")
+    else:
+        print(f"Unsupported OS: {os_type}")
 
 def entering_desired_hashtag():
     while True:
@@ -42,6 +67,9 @@ def entering_desired_hashtag():
             print('\nEnter a number of an option.\n') # Ask user to enter a number if the input isn't an integer
 
 tagname = entering_desired_hashtag()
+tagname_dupe_test = tagname
+
+
 
 # Generates the file path from the program itself to ensure no accidental file creations are placed elsewhere
 script_dir = dirname(abspath(__file__)) 
@@ -53,34 +81,43 @@ captions_file_path = join(script_dir, hashtag_filename_captions)
 seenids_file_path = join(script_dir, hashtag_filename_seenids)
 
 def captions_seenids(desired_hashtag):
-        print(f'Received hashtag: {desired_hashtag}')
-        # Check if the file already exists
-        if exists(captions_file_path):
-            global file_existing
-            print(f'A file for the hashtag "{desired_hashtag}" already exists. So, existing captions and seen IDs may be skipped when scraping.')
-            file_existing = True
-        else:
-            try:    
-                with open(captions_file_path, 'w') as f:
-                    pass  # Create the file emptily 
-            except Exception as e:
-                print(f"An error occurred: {e}")
-        
-        # Check if the file already exists
-        if exists(seenids_file_path):
-            print(f'A file for the hashtag "{desired_hashtag}" already exists. So, existing captions and seen IDs may be skipped when scraping.')
-            file_existing = True
-        else:
-            try:    
-                with open(seenids_file_path, 'w') as f:
-                    pass  # Create the file emptily
-            except Exception as e:
-                print(f"An error occurred: {e}")
+    global file_existing
+    print(f'Received hashtag: {desired_hashtag}')
+    # Check if the file already exists
+    if exists(captions_file_path):
+        print(f'A file for the hashtag "{desired_hashtag}" already exists. So, existing captions and seen IDs may be skipped when scraping.')
+        file_existing = True
+    else:
+        try:    
+            with open(captions_file_path, 'w') as f:
+                pass  # Create the file emptily 
+        except Exception as e:
+            print(f"An error occurred: {e}")
+    
+    # Check if the file already exists
+    if exists(seenids_file_path):
+        print(f'A file for the hashtag "{desired_hashtag}" already exists. So, existing captions and seen IDs may be skipped when scraping.')
+        file_existing = True
+    else:
+        try:    
+            with open(seenids_file_path, 'w') as f:
+                pass  # Create the file emptily
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
 captions_seenids(tagname) 
 
 def web_scrape():
-    print('IMPORTANT: Every time a "Press Enter" prompt appears, please check to see if TikTok is making you perform a reCAPTCHA test.\nPlease do not touch the WebDriver tab at all unless the prompt is required to be completed')
+    
+    def background_check_captcha_element():
+        try:
+            captcha_element = driver.find_element(By.XPATH, '/html/body/div[7]/div/div[1]/div[1]/a')
+            show_popup('Please check the TikTok page to complete the CAPTCHA test, to continue your data gathering.', 'COMPLETE CAPTCHA IMAGE TEST ON TIKTOK')
+
+        except NoSuchElementException:
+            pass
+    
+    print('IMPORTANT: Every time a "Press Enter" prompt appears, please check to see if TikTok is making you perform a reCAPTCHA test.\nPlease do not touch the WebDriver tab at all unless the prompt is required to be completed, as this will break the program.')
     
     wait()  
 
@@ -528,6 +565,7 @@ def web_scrape():
     }
     ]
     
+    
     wait()
     
     # Load the account's cookies into the browser
@@ -538,6 +576,7 @@ def web_scrape():
     
     driver.refresh()
     # After having refreshed the page, your WebDriver instance should have logged into the account
+    background_check_captcha_element()
     wait()
     # To find the search button, we will use the find_element function to insert the target hashtag
     search_bar = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div/div[2]/div/form/input')
@@ -545,13 +584,14 @@ def web_scrape():
     search_bar.send_keys(tagname)
     search_bar.send_keys(Keys.ENTER)
     
+    background_check_captcha_element()
     wait()
     
     # Filtering the feed to only show videos 
     video_button = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[3]/div')
     video_button.click()
 
-
+    background_check_captcha_element()
     wait()
 
     # Loading all the captions from the file
@@ -559,11 +599,10 @@ def web_scrape():
         first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
         if not first_line:
             print("The file is empty.")
-            # Break out of the `with open` block
             tags = list()
         else:
+            f.seek(0)  # Reset file pointer to the beginning
             tags = list(json.load(f))
-
 
     wait()
 
@@ -572,9 +611,9 @@ def web_scrape():
         first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
         if not first_line:
             print("The file is empty.")
-            # Break out of the `with open` block
             seen_ids = set()
-        else:    
+        else:
+            f.seek(0)  # Reset file pointer to the beginning
             seen_ids = set(json.load(f))
         
     wait()
@@ -582,12 +621,14 @@ def web_scrape():
     # Locate the element of the video tab itself which contains the video element objects
     resultsTab = driver.find_element(By.ID, 'tabs-0-panel-search_video')
 
+    background_check_captcha_element()
     wait()
 
     # Gather all the videos by their individual elements
     postsTab = resultsTab.find_elements(By.CLASS_NAME, 'e19c29qe10')
     postsTabSize = len(postsTab)
-
+    
+    background_check_captcha_element()
     wait()
 
     while True: 
@@ -602,6 +643,7 @@ def web_scrape():
     
     wait()
     
+    # '/html/body/div[7]/div/div[1]/div[1]/a' is the captcha name button
     # Iterate through each post found
     for post in postsTab:
         # Obtain the link of every post found 
@@ -648,11 +690,14 @@ def web_scrape():
     with open(seenids_file_path, 'a') as b:
         # Convert to list
         json.dump(list(seen_ids), b)
+    
+    if test_var == False:
+        test_var = True
 
 def network_creation():
 
     with open(captions_file_path) as f:
-        captions = json.load(f)
+        captions = json.load(f) 
         
     # Create a NetworkX graph
     hashtag_graph = nx.Graph()
@@ -844,7 +889,7 @@ script = f'''
 Welcome! This program obtains the optimal hashtags to put in your TikTok caption for your videos based on the content that you make.
 
 An internet connection is *REQUIRED* for Step 1.
-{'\nDue to files for '+ tagname + ' already existing,' + ' if the file has not been mentioned that it is empty then please run Step 1.' + '\nOtherwise, run Step 2 to calculate your list of hashtags if not done already.' + '\nIf so, there is a list of hashtags in the same directory as the program.'  if file_existing else ''} 
+{'\nDue to files for '+ tagname + ' already existing,' + ' if the files are empty then please run Step 1.' + '\nOtherwise, run Step 2 to calculate your list of hashtags if not done already.' + '\nThere is a list of hashtags in the same directory as the program, if both steps are done.'  if file_existing else ''} 
 Enter your choice below:
 
 1) Step 1: Gathering the data for {tagname}
@@ -853,7 +898,7 @@ Enter your choice below:
 4) Return to start menu
 
 Enter here: '''
-# Line 847 uses a conditional statement within the F string such that if files for the hashtag that was inputted already exists, then write out a message that states that you can just retrieve the list via the text file produced
+# 'script' uses a conditional statement within the F string such that if files for the hashtag that was inputted already exists, then write out a message that states that you can just retrieve the list via the text file produced
 
 while True:
     try:
@@ -866,13 +911,21 @@ while True:
             quit()
         elif option == 4:
             tagname = entering_desired_hashtag()
+            if tagname != tagname_dupe_test:
+                print(tagname, tagname_dupe_test)
+                file_existing = False
+                captions_seenids(tagname)
         else:
             print('Enter a choice available.')
     except ValueError:
         print('Enter a number please.')
         
-        
+
 # enter code to force the user to do the reCAPTCHA test but then before and after the test, disable any possible human interaction with the webdriver tab
+# break down tests even furthr such that the user will enter a hashtag but not search first, and calculate the hashtags etc first
+# the updated tagname function does not work properly
+# add defensive programming such that if the hashtag entered is nsfw by tiktoks standards, invalidate the use of the hashtag
+
 '''
 # Focus on reCAPTCHA element
 captcha = driver.find_element(By.ID, 'recaptcha-anchor')  # or appropriate locator
@@ -941,4 +994,4 @@ chrome_options.headless = False
 driver = webdriver.Chrome(options=chrome_options)
 
 
-'''
+''' 
