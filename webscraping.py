@@ -4,24 +4,11 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from os.path import abspath, dirname, exists, join
-from os import chmod
 import os
 import platform
 import re
 import time
 import json
-
-# Generates the file path from the program itself to ensure no accidental file creations are placed elsewhere
-script_dir = dirname(abspath(__file__)) 
-
-
-'''
-# Construct the file paths
-hashtag_filename_captions = f'{tagname}captions.json'
-hashtag_filename_seenids = f'{tagname}seenids.json'
-captions_file_path = join(script_dir, hashtag_filename_captions)
-seenids_file_path = join(script_dir, hashtag_filename_seenids)
-'''
 
 # Subroutine to wait before the next step loads, ensuring that each step of the program is run correctly
 def wait():
@@ -37,7 +24,6 @@ def show_popup(message, title="TikTok Reminder"):
     elif os_type == "Darwin":
         # macOS: Use AppleScript via osascript
         os.system(f'osascript -e \'display alert "{title}" message "{message}"\'')
-
         
 def entering_desired_hashtag():
     while True:
@@ -45,8 +31,8 @@ def entering_desired_hashtag():
             options = int(input('1) Enter your hashtag\n2) Quit \nEnter here: '))
             if options == 1:
                 desired_hashtag = input('Please enter the hashtag you wish to search (with the # symbol as well): ')
-                if re.match(r'^#\s*$', desired_hashtag): # Regex to check if it's only '#' or '#' followed by whitespace
-                    print('Invalid tag. Hashtag must not be just the symbol itself or followed by only whitespace.')
+                if re.match(r'^#\s*$|^#[^a-zA-Z0-9]+$', desired_hashtag):
+                    print('Invalid tag. Hashtag cannot be only whitespace or special symbols.')
                     continue
                 elif not desired_hashtag.startswith('#'):  # Ensure the hashtag starts with '#'
                     print('Invalid tag. Hashtag must start with #.')
@@ -59,6 +45,33 @@ def entering_desired_hashtag():
                 print('\nEnter a valid option.\n')
         except ValueError:
             print('\nEnter a number of an option.\n') # Ask user to enter a number if the input isn't an integer
+
+def update_tagname():
+    
+    # Store the hashtag to be used and potentially modified if needed
+    new_tagname = entering_desired_hashtag()
+    
+    # Generates the file path from the program itself to ensure no accidental file creations are placed elsewhere
+    script_dir = dirname(abspath(__file__)) 
+    
+    # Construct the file paths
+    hashtag_filename_captions = f'{new_tagname}captions.json'
+    hashtag_filename_seenids = f'{new_tagname}seenids.json'
+    captions_file_path = join(script_dir, hashtag_filename_captions)
+    seenids_file_path = join(script_dir, hashtag_filename_seenids)
+    
+    return new_tagname, captions_file_path, seenids_file_path
+
+# Store the hashtag to be used and potentially modified if needed
+tagname = entering_desired_hashtag()
+# Generates the file path from the program itself to ensure no accidental file creations are placed elsewhere
+script_dir = dirname(abspath(__file__)) 
+# Construct the file paths
+hashtag_filename_captions = f'{tagname}captions.json'
+hashtag_filename_seenids = f'{tagname}seenids.json'
+captions_file_path = join(script_dir, hashtag_filename_captions)
+seenids_file_path = join(script_dir, hashtag_filename_seenids)
+
 
 def web_scrape(tagname, captions_file_path, seenids_file_path):
     
@@ -559,27 +572,35 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     wait()
 
     # Loading all the captions from the file
-    with open(captions_file_path) as f:
-        first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
-        if not first_line:
-            print("The file is empty.")
-            tags = list()
-        else:
-            f.seek(0)  # Reset file pointer to the beginning
-            tags = list(json.load(f))
-
+    try:
+        with open(captions_file_path) as f:
+            first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
+            if not first_line:
+                print("The file is empty.")
+                tags = list()
+            else:
+                f.seek(0)  # Reset file pointer to the beginning
+                tags = list(json.load(f))
+    except FileNotFoundError:
+        with open(captions_file_path, 'w') as f:
+            pass
+    background_check_captcha_element()
     wait()
 
     # Loading the seen video IDs from the file
-    with open(seenids_file_path) as f:
-        first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
-        if not first_line:
-            print("The file is empty.")
-            seen_ids = set()
-        else:
-            f.seek(0)  # Reset file pointer to the beginning
-            seen_ids = set(json.load(f))
-        
+    try:
+        with open(seenids_file_path) as f:
+            first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
+            if not first_line:
+                print("The file is empty.")
+                seen_ids = set()
+            else:
+                f.seek(0)  # Reset file pointer to the beginning
+                seen_ids = set(json.load(f))
+    except FileNotFoundError:
+        with open(seenids_file_path, 'w') as f:
+            pass
+    background_check_captcha_element()    
     wait()
     
     # Locate the element of the video tab itself which contains the video element objects
