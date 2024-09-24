@@ -3,9 +3,12 @@ from tqdm import tqdm
 from collections import Counter
 from scipy.stats import linregress
 from matplotlib.ticker import FuncFormatter
-from webscraping import wait
+from os import chmod
+from os.path import exists
+from webscraping import wait, tagname, script_dir, captions_file_path
 import networkx as nx
 import matplotlib.pyplot as plt
+import numpy as np
 import json
 
 def network_creation():
