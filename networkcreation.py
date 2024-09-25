@@ -5,13 +5,13 @@ from scipy.stats import linregress
 from matplotlib.ticker import FuncFormatter
 from os import chmod
 from os.path import exists
-from webscraping import wait, tagname, script_dir, captions_file_path
+from webscraping import wait, script_dir
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import json
 
-def network_creation():
+def network_creation(tagname, captions_file_path):
 
     with open(captions_file_path) as f:
         captions = json.load(f) 
