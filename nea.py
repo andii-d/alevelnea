@@ -35,7 +35,7 @@ Enter here: '''
         if option == 1:
             web_scrape(tagname, captions_file_path, seenids_file_path)
         elif option == 2:
-            network_creation()
+            network_creation(tagname, captions_file_path)
         elif option == 3:
             quit()
         elif option == 4:
