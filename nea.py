@@ -2,20 +2,18 @@
 from webscraping import *
 from hashtag_network import *
 
-# Boolean variables used for F string condition statements 
+# Boolean variable used for F string condition statement
 file_existing = False
-test_var = False
-
-try:
-    with open(captions_file_path) as f:
-        file_existing = True
-    with open(seenids_file_path) as f:
-        file_existing = True
-except FileNotFoundError:
-    file_existing = False
-    
 
 while True:
+    try:
+        with open(captions_file_path) as f:
+            file_existing = True
+        with open(seenids_file_path) as f:
+            file_existing = True
+    except FileNotFoundError:
+        file_existing = False
+        
     script = f'''
 Welcome! This program obtains the optimal hashtags to put in your TikTok caption for your videos based on the content that you make.
 
@@ -33,9 +31,15 @@ Enter here: '''
     try:
         option = int(input(script))
         if option == 1:
-            web_scrape(tagname, captions_file_path, seenids_file_path)
+            if web_scrape(tagname, captions_file_path, seenids_file_path):
+                tagname = entering_desired_hashtag()
+                continue
         elif option == 2:
-            network_creation(tagname, captions_file_path)
+            try:
+                network_creation(tagname, captions_file_path)
+            except FileNotFoundError:
+                print(f'Please run Step 1 first with {tagname} as there are no files for this hashtag.')
+                wait()
         elif option == 3:
             quit()
         elif option == 4:
@@ -52,4 +56,3 @@ Enter here: '''
 # break down tests even further such that the user will enter a hashtag but not search first, and calculate the hashtags etc first
 # the updated tagname function does not work properly
 # add defensive programming such that if the hashtag entered is nsfw by tiktoks standards, invalidate the use of the hashtag
-
