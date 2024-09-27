@@ -31,12 +31,8 @@ def entering_desired_hashtag():
             options = int(input('1) Enter your hashtag\n2) Quit \nEnter here: '))
             if options == 1:
                 desired_hashtag = input('Please enter the hashtag you wish to search (with the # symbol as well): ')
-                if re.match(r'^#\s*$|^#[^a-zA-Z0-9]+$', desired_hashtag):
-                    print('Invalid tag. Hashtag cannot be only whitespace or special symbols.')
-                    continue
-                elif not desired_hashtag.startswith('#'):  # Ensure the hashtag starts with '#'
-                    print('Invalid tag. Hashtag must start with #.')
-                    continue
+                if not re.match(r'^#[A-Za-z0-9]+$', desired_hashtag):
+                        print('Invalid tag. A valid hashtag must start with # and be followed only by letters or numbers.')
                 else:
                     return desired_hashtag  # Return valid hashtag
             elif options == 2:
@@ -74,24 +70,28 @@ seenids_file_path = join(script_dir, hashtag_filename_seenids)
 
 
 def web_scrape(tagname, captions_file_path, seenids_file_path):
+    tagname = tagname
+    def disable_all_input():
+        driver.execute_script("""
+document.addEventListener('mousedown', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+document.addEventListener('mouseup', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+document.addEventListener('click', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+document.addEventListener('dblclick', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+document.addEventListener('keydown', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+document.addEventListener('keyup', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+""")
+        print('Overlay Added')
     
-    def nsfw_hashtag():
+    def nsfw_hashtag(old_tagname):
         try:
-            nsfw_guidelines_element = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[2]/div/div[2]/div/p')
-            nsfw_guidelines_text = nsfw_guidelines_element.text
-            if 'Community Guidelines' in nsfw_guidelines_text:
-                print(f"The hashtag {tagname} does not comply with TikTok's guidelines and cannot be searched up for data.\nPlease choose a different hashtag. ")
+            nsfw_guidelines_element = driver.find_element(By.XPATH, f"//*[contains(text(), 'violates')]")
+            if nsfw_guidelines_element:
+                print(f"The hashtag {old_tagname} does not comply with TikTok's guidelines and cannot be searched up for data.\nPlease choose a different hashtag. ")
+                driver.quit()
                 wait()
+                return True
                 tagname = entering_desired_hashtag()
         
-        except NoSuchElementException:
-            pass
-        
-    def background_check_captcha_element():
-        try:
-            captcha_element = driver.find_element(By.XPATH, '/html/body/div[7]/div/div[1]/div[1]/a')
-            show_popup('Please check the TikTok page to complete the CAPTCHA test, to continue your data gathering.', 'COMPLETE CAPTCHA IMAGE TEST ON TIKTOK')
-
         except NoSuchElementException:
             pass
     
@@ -104,6 +104,7 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     # We can change the search engine to Chrome, Firefox, etc
 
     driver.get("https://www.tiktok.com")
+    
     # Load the TikTok page
 
     # The cookies of the placeholder TikTok account made for this program (strictly used only for the function of this program)
@@ -547,28 +548,29 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     for cookie in cookies:
         driver.add_cookie(cookie)
     
-    wait()
-    
     driver.refresh()
     # After having refreshed the page, your WebDriver instance should have logged into the account
-    background_check_captcha_element()
+
     wait()
     
     # To find the search button, we will use the find_element function to insert the target hashtag
+    
     search_bar = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div/div[2]/div/form/input')
     # Enter the desired hashtag
     search_bar.send_keys(tagname)
     search_bar.send_keys(Keys.ENTER)
     
-    background_check_captcha_element()
     wait()
     
     # Filtering the feed to only show videos 
     video_button = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[3]/div')
     video_button.click()
 
-    nsfw_hashtag()
-    background_check_captcha_element()
+    # Return True to return back to the main menu to change the hashtag
+    if nsfw_hashtag(tagname):
+        return True
+    
+    
     wait()
 
     # Loading all the captions from the file
@@ -584,7 +586,7 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     except FileNotFoundError:
         with open(captions_file_path, 'w') as f:
             pass
-    background_check_captcha_element()
+    
     wait()
 
     # Loading the seen video IDs from the file
@@ -600,20 +602,23 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     except FileNotFoundError:
         with open(seenids_file_path, 'w') as f:
             pass
-    background_check_captcha_element()    
+        
     wait()
     
     # Locate the element of the video tab itself which contains the video element objects
+    
     resultsTab = driver.find_element(By.ID, 'tabs-0-panel-search_video')
-
-    background_check_captcha_element()
+    
+    
     wait()
 
     # Gather all the videos by their individual elements
+    
     postsTab = resultsTab.find_elements(By.CLASS_NAME, 'e19c29qe10')
     postsTabSize = len(postsTab)
     
-    background_check_captcha_element()
+    
+    
     wait()
 
     while True: 
