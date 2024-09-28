@@ -70,30 +70,35 @@ seenids_file_path = join(script_dir, hashtag_filename_seenids)
 
 
 def web_scrape(tagname, captions_file_path, seenids_file_path):
-    tagname = tagname
-    def disable_all_input():
-        driver.execute_script("""
-document.addEventListener('mousedown', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-document.addEventListener('mouseup', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-document.addEventListener('click', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-document.addEventListener('dblclick', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-document.addEventListener('keydown', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-document.addEventListener('keyup', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-""")
-        print('Overlay Added')
-    
+#     def disable_all_input():
+#         driver.execute_script("""
+# document.addEventListener('mousedown', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+# document.addEventListener('mouseup', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+# document.addEventListener('click', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+# document.addEventListener('dblclick', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+# document.addEventListener('keydown', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+# document.addEventListener('keyup', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
+# """)
+#         print('Overlay Added')
+
+    def accept_cookies():
+        try:
+            accept_button = driver.find_element(By.XPATH, "/html/body/tiktok-cookie-banner//div/div[2]/button[2]")
+            if accept_button:
+                accept_button.click()
+        except NoSuchElementException:
+            print('No element found')
+            pass
+        
     def nsfw_hashtag(old_tagname):
         try:
-            nsfw_guidelines_element = driver.find_element(By.XPATH, f"//*[contains(text(), 'violates')]")
+            nsfw_guidelines_element = driver.find_element(By.CSS_SELECTOR, "a[href='https://www.tiktok.com/community-guidelines?lang=en']") 
             if nsfw_guidelines_element:
-                print(f"The hashtag {old_tagname} does not comply with TikTok's guidelines and cannot be searched up for data.\nPlease choose a different hashtag. ")
-                driver.quit()
+                print(f'The hashtag {old_tagname} has no search results as it is deemed NSFW. Enter a new one.')
                 wait()
                 return True
-                tagname = entering_desired_hashtag()
-        
         except NoSuchElementException:
-            pass
+            print('Not found')
     
     print('IMPORTANT: Every time a "Press Enter" prompt appears, please check to see if TikTok is making you perform a reCAPTCHA test.\nPlease do not touch the WebDriver tab at all unless the prompt is required to be completed, as this will break the program.')
     
@@ -550,7 +555,7 @@ document.addEventListener('keyup', function(e) { e.stopPropagation(); e.preventD
     
     driver.refresh()
     # After having refreshed the page, your WebDriver instance should have logged into the account
-
+    accept_cookies()
     wait()
     
     # To find the search button, we will use the find_element function to insert the target hashtag
@@ -566,12 +571,11 @@ document.addEventListener('keyup', function(e) { e.stopPropagation(); e.preventD
     video_button = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[3]/div')
     video_button.click()
 
+    wait()
     # Return True to return back to the main menu to change the hashtag
     if nsfw_hashtag(tagname):
         return True
     
-    
-    wait()
 
     # Loading all the captions from the file
     try:
@@ -609,15 +613,12 @@ document.addEventListener('keyup', function(e) { e.stopPropagation(); e.preventD
     
     resultsTab = driver.find_element(By.ID, 'tabs-0-panel-search_video')
     
-    
     wait()
 
     # Gather all the videos by their individual elements
     
     postsTab = resultsTab.find_elements(By.CLASS_NAME, 'e19c29qe10')
     postsTabSize = len(postsTab)
-    
-    
     
     wait()
 
