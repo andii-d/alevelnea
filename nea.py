@@ -31,9 +31,7 @@ Enter here: '''
     try:
         option = int(input(script))
         if option == 1:
-            if web_scrape(tagname, captions_file_path, seenids_file_path):
-                tagname = entering_desired_hashtag()
-                continue
+            web_scrape(tagname, captions_file_path, seenids_file_path)
         elif option == 2:
             try:
                 network_creation(tagname, captions_file_path)
