@@ -83,9 +83,11 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
 
     def accept_cookies():
         try:
-            accept_button = driver.find_element(By.XPATH, "/html/body/tiktok-cookie-banner//div/div[2]/button[2]")
-            if accept_button:
-                accept_button.click()
+            cookies_tab_full = driver.find_element(By.XPATH, "/html/body/tiktok-cookie-banner") 
+            shadow_root = driver.execute_script('return arguments[0].shadowRoot', cookies_tab_full)
+            element_inside_shadow = shadow_root.find_element(By.CLASS_NAME, 'button-wrapper')
+            button_element = element_inside_shadow.find_element(By.CSS_SELECTOR, 'button')
+            button_element.click()
         except NoSuchElementException:
             print('No element found')
             pass
@@ -99,6 +101,8 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
                 return True
         except NoSuchElementException:
             print('Not found')
+            pass
+            
     
     print('IMPORTANT: Every time a "Press Enter" prompt appears, please check to see if TikTok is making you perform a reCAPTCHA test.\nPlease do not touch the WebDriver tab at all unless the prompt is required to be completed, as this will break the program.')
     
@@ -565,6 +569,7 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     search_bar.send_keys(tagname)
     search_bar.send_keys(Keys.ENTER)
     
+    accept_cookies()
     wait()
     
     # Filtering the feed to only show videos 
@@ -572,10 +577,15 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     video_button.click()
 
     wait()
-    # Return True to return back to the main menu to change the hashtag
-    if nsfw_hashtag(tagname):
-        return True
     
+    # Return True to return back to the main menu to change the hashtag
+    try:
+        if nsfw_hashtag(tagname):
+            return True
+        else:
+            pass
+    except NoSuchElementException:
+        pass
 
     # Loading all the captions from the file
     try:
