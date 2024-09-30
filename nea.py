@@ -2,6 +2,8 @@
 from webscraping import *
 from hashtag_network import *
 
+
+
 # Boolean variable used for F string condition statement
 file_existing = False
 
@@ -33,7 +35,9 @@ Enter here: '''
         if option == 1:
             web_scrape(tagname, captions_file_path, seenids_file_path)
         elif option == 2:
+            print('TEEEEEEEEEEST')
             try:
+                print('ouehrghiuhebrgiubergiuber')
                 network_creation(tagname, captions_file_path)
             except FileNotFoundError:
                 print(f'Please run Step 1 first with {tagname} as there are no files for this hashtag.')
