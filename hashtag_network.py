@@ -14,7 +14,10 @@ import json
 def network_creation(tagname, captions_file_path):
 
     with open(captions_file_path) as f:
-        captions = json.load(f) 
+        captions = json.load(f)
+        first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
+        if not first_line:
+            raise FileNotFoundError # Raise because the file is empty and count it as nothing existing
         
     # Create a NetworkX graph
     hashtag_graph = nx.Graph()
@@ -200,3 +203,5 @@ def network_creation(tagname, captions_file_path):
             print('A list of your hashtags has been made into a file.')
     except FileNotFoundError as e:
         print(f'An error occurred: {e}')
+        
+        
