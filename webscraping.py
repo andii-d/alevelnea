@@ -67,6 +67,7 @@ hashtag_filename_captions = f'{tagname}captions.json'
 hashtag_filename_seenids = f'{tagname}seenids.json'
 captions_file_path = join(script_dir, hashtag_filename_captions)
 seenids_file_path = join(script_dir, hashtag_filename_seenids)
+print(captions_file_path)
 
 
 def web_scrape(tagname, captions_file_path, seenids_file_path):
@@ -101,7 +102,8 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
                 return True
         except NoSuchElementException:
             print('Not found')
-            pass
+            return False
+            wait()
             
     
     print('IMPORTANT: Every time a "Press Enter" prompt appears, please check to see if TikTok is making you perform a reCAPTCHA test.\nPlease do not touch the WebDriver tab at all unless the prompt is required to be completed, as this will break the program.')
@@ -579,12 +581,11 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     wait()
     
     # Return True to return back to the main menu to change the hashtag
-    try:
-        if nsfw_hashtag(tagname):
-            return True
-        else:
-            pass
-    except NoSuchElementException:
+    nsfw = nsfw_hashtag(tagname)
+    
+    if nsfw:
+        return True
+    else:
         pass
 
     # Loading all the captions from the file
@@ -596,11 +597,16 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
                 tags = list()
             else:
                 f.seek(0)  # Reset file pointer to the beginning
-                tags = list(json.load(f))
+                try:
+                    tags = list(json.load(f))  # Try to load the JSON content
+                except json.JSONDecodeError:
+                    print("Error: The file contains invalid JSON data.")
+                    tags = list()  # Initialize as an empty list
     except FileNotFoundError:
+        print(f"{captions_file_path} not found, creating a new file.")
         with open(captions_file_path, 'w') as f:
-            pass
-    
+            pass  # Create an empty file if it doesn't exist
+
     wait()
 
     # Loading the seen video IDs from the file
@@ -612,11 +618,16 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
                 seen_ids = set()
             else:
                 f.seek(0)  # Reset file pointer to the beginning
-                seen_ids = set(json.load(f))
+                try:
+                    seen_ids = set(json.load(f))  # Try to load the JSON content
+                except json.JSONDecodeError:
+                    print("Error: The file contains invalid JSON data.")
+                    seen_ids = set()  # Initialize as an empty set
     except FileNotFoundError:
+        print(f"{seenids_file_path} not found, creating a new file.")
         with open(seenids_file_path, 'w') as f:
-            pass
-        
+            pass  # Create an empty file if it doesn't exist
+
     wait()
     
     # Locate the element of the video tab itself which contains the video element objects
@@ -641,6 +652,9 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
             break
         else:
             postsTabSize = len(postsTab) # Update the current amount of videos found under the hashtag
+    
+    # potentially edit cell such that it will run for 5 minutes at most but then if it detects a 'no more results' or a 'no more videos' element found
+    # then break from the loop and carry on with the rest of the program
     
     wait()
     
