@@ -589,12 +589,13 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
         pass
 
     # Loading all the captions from the file
+    # Loading all the captions from the file
     try:
         with open(captions_file_path) as f:
             first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
             if not first_line:
                 print("The file is empty.")
-                tags = list()
+                tags = list()  # Initialize as an empty list
             else:
                 f.seek(0)  # Reset file pointer to the beginning
                 try:
@@ -604,6 +605,7 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
                     tags = list()  # Initialize as an empty list
     except FileNotFoundError:
         print(f"{captions_file_path} not found, creating a new file.")
+        tags = list()  # Initialize as an empty list
         with open(captions_file_path, 'w') as f:
             pass  # Create an empty file if it doesn't exist
 
@@ -615,7 +617,7 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
             first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
             if not first_line:
                 print("The file is empty.")
-                seen_ids = set()
+                seen_ids = set()  # Initialize as an empty set
             else:
                 f.seek(0)  # Reset file pointer to the beginning
                 try:
@@ -625,44 +627,48 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
                     seen_ids = set()  # Initialize as an empty set
     except FileNotFoundError:
         print(f"{seenids_file_path} not found, creating a new file.")
+        seen_ids = set()  # Initialize as an empty set
         with open(seenids_file_path, 'w') as f:
             pass  # Create an empty file if it doesn't exist
 
     wait()
     
     # Locate the element of the video tab itself which contains the video element objects
-    
-    resultsTab = driver.find_element(By.ID, 'tabs-0-panel-search_video')
-    
-    wait()
+    resultsTab = driver.find_element(By.CLASS_NAME, 'eegew6e2')
+    resultsTab2 = resultsTab.find_element(By.CLASS_NAME, 'eegew6e0')
 
     # Gather all the videos by their individual elements
-    
-    postsTab = resultsTab.find_elements(By.CLASS_NAME, 'e19c29qe10')
-    postsTabSize = len(postsTab)
-    
-    wait()
 
-    while True: 
+    postsTab = resultsTab2.find_elements(By.CLASS_NAME, 'e19c29qe19')
+
+    while True:
         # Scrolls to the bottom of the page automatically
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         time.sleep(5) # Every 5 seconds, gather all the video objects currently loaded
-        postsTab = resultsTab.find_elements(By.CLASS_NAME, 'e19c29qe10')
-        if len(postsTab) == postsTabSize: # If the size of the current posts loaded is the same as the amount of all the posts together, break out the loop
-            break
-        else:
-            postsTabSize = len(postsTab) # Update the current amount of videos found under the hashtag
-    
-    # potentially edit cell such that it will run for 5 minutes at most but then if it detects a 'no more results' or a 'no more videos' element found
-    # then break from the loop and carry on with the rest of the program
+        postsTab = resultsTab.find_elements(By.CLASS_NAME, 'e19c29qe19')
+        print(len(postsTab), 'postsTab')
+        try:
+            end_result = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[2]/div/div[2]/div/div[2]')
+            if end_result.text == 'No more results' or 'No more videos':
+                break
+            else:
+                continue
+        except NoSuchElementException:
+            pass
+        
+        # if len(postsTab) == postsTabSize: # If the size of the current posts loaded is the same as the amount of all the posts together, break out the loop
+        #     break
+        # else:
+        #     postsTabSize = len(postsTab) # Update the current amount of videos found under the hashtag
     
     wait()
     
     # '/html/body/div[7]/div/div[1]/div[1]/a' is the captcha name button
+    
     # Iterate through each post found
     for post in postsTab:
         # Obtain the link of every post found 
-        postsTabClassName = post.find_element(By.CLASS_NAME, "e1cg0wnj1")
+        postsTabClassName = post.find_element(By.CLASS_NAME, 'e1cg0wnj1')
         postsTabID = postsTabClassName.find_element(By.TAG_NAME, "a")
         postsTabID = postsTabID.get_attribute("href")
 
@@ -670,15 +676,18 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
             continue
         # Add the unseen ID to all seen IDs
         seen_ids.add(postsTabID)
-
+        
         # Create a list of hashtags per caption in video
         postCaptions = []
-        # Locate the caption via all anchor elements
-        postcaptionClassName = post.find_element(By.CLASS_NAME, "ejg0rhn0")
-        postcaption = postcaptionClassName.find_elements(By.TAG_NAME, "a")
+        # Locate the caption via all anchor elements within the caption
+        caption_full = post.find_element(By.CLASS_NAME, 'etrd4pu0')
+        postcaption = caption_full.find_element(By.CLASS_NAME, 'ejg0rhn1')
+        postcaption = postcaption.find_elements(By.TAG_NAME, 'a')
 
         # Obtain each hashtag in each post's caption
         for tag in postcaption:
+
+            print(tag)
             hashtag = tag.get_attribute("href")
             # Eliminate any instances where the caption contains a link or an @ to someone's account
             if '@' in hashtag.replace('https://www.tiktok.com/tag/', ''):
@@ -699,9 +708,10 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
         
     wait()
     
-    with open(captions_file_path, 'a') as a:
+    # Write the updated captions to the file
+    with open(captions_file_path, 'w') as a:
         json.dump(tags, a)
-
-    with open(seenids_file_path, 'a') as b:
-        # Convert to list
+    
+    # Write the updated seen IDs to the file
+    with open(seenids_file_path, 'w') as b:
         json.dump(list(seen_ids), b)
