@@ -14,9 +14,9 @@ import json
 def network_creation(tagname, captions_file_path):
 
     with open(captions_file_path) as f:
-        captions = json.load(f)
-        first_line = f.readline().strip()  # Read the first line and remove any leading/trailing whitespace
-        if not first_line:
+        try:
+            captions = json.load(f)
+        except json.JSONDecodeError or FileNotFoundError or not (f.readline().strip()): # Read the first line and remove any leading/trailing whitespace
             raise FileNotFoundError # Raise because the file is empty and count it as nothing existing
         
     # Create a NetworkX graph
