@@ -19,7 +19,7 @@ while True:
     script = f'''
 Welcome! This program obtains the optimal hashtags to put in your TikTok caption for your videos based on the content that you make.
 
-An internet connection is *REQUIRED* for Step 1.
+An internet connection is *REQUIRED* for Step 1. {'Run this step first please, as ' + tagname + ' it is the first time it has been entered.' if not file_existing else ''}
 {'\nDue to files for '+ tagname + ' already existing,' + ' if the files are empty then please run Step 1.' + '\nOtherwise, run Step 2 to calculate your list of hashtags if not done already.' + '\nThere is a list of hashtags in the same directory as the program, if both steps are done.'  if file_existing else ''} 
 Enter your choice below:
 
@@ -35,13 +35,12 @@ Enter here: '''
         if option == 1:
             web_scrape(tagname, captions_file_path, seenids_file_path)
         elif option == 2:
-            print('TEEEEEEEEEEST')
             try:
-                print('ouehrghiuhebrgiubergiuber')
                 network_creation(tagname, captions_file_path)
             except FileNotFoundError:
                 print(f'Please run Step 1 first with {tagname} as there are no files for this hashtag.')
                 wait()
+                
         elif option == 3:
             quit()
         elif option == 4:
@@ -56,5 +55,3 @@ Enter here: '''
 
 # enter code to force the user to do the reCAPTCHA test but then before and after the test, disable any possible human interaction with the webdriver tab
 # break down tests even further such that the user will enter a hashtag but not search first, and calculate the hashtags etc first
-# the updated tagname function does not work properly
-# add defensive programming such that if the hashtag entered is nsfw by tiktoks standards, invalidate the use of the hashtag
