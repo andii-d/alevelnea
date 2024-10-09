@@ -10,6 +10,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import json
+import requests
 
 def network_creation(tagname, captions_file_path):
 
@@ -21,8 +22,6 @@ def network_creation(tagname, captions_file_path):
         
     # Create a NetworkX graph
     hashtag_graph = nx.Graph()
-    
-    wait()
     
     # Process captions to create the hashtag graph
     for caption in captions:
@@ -37,13 +36,13 @@ def network_creation(tagname, captions_file_path):
                 else:
                     hashtag_graph.add_edge(tag1, tag2, weight=1) # If a connection between 2 hashtags does not exist, set their edge weight to 1
 
-    wait()
-
 
     main_node = f'{tagname}'[1:]
-    hashtag_graph.remove_node(main_node) # Remove the hashtag that was searched from the graph (as it will be #1 anyway due to it being the hashtag every video will contain, so it will be pointless to mention)
-
-    wait()
+    
+    try:
+        hashtag_graph.remove_node(main_node) # Remove the hashtag that was searched from the graph (as it will be #1 anyway due to it being the hashtag every video will contain, so it will be pointless to mention)
+    except Exception:
+        pass
 
     # Extract the largest connected component
     hashtag_graph = hashtag_graph.subgraph(max(nx.connected_components(hashtag_graph), key=len))
@@ -199,9 +198,8 @@ def network_creation(tagname, captions_file_path):
             with open(f'{script_dir}/{tagname}_top_20_list.txt', 'w') as f:
                 for node in top_20_nodes_overall:
                     f.write(f'#{node}\n')
+            # Change the permissions of the file to be read only so the user doesn't accidentally edit their list
             chmod(f'{script_dir}/{tagname}_top_20_list.txt', 0o444)
             print('A list of your hashtags has been made into a file.')
     except FileNotFoundError as e:
         print(f'An error occurred: {e}')
-        
-        
