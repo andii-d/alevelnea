@@ -4,6 +4,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from os.path import abspath, dirname, exists, join
+from tqdm import tqdm
 import os
 import platform
 import re
@@ -11,26 +12,44 @@ import time
 import json
 
 # Subroutine to wait before the next step loads, ensuring that each step of the program is run correctly
+def ping_website(url):
+    try:
+        # Adjust parameter for Windows and other linux/unix based OSs
+        param = "-n" if os.name == "nt" else "-c"
+        
+        # Executing the ping command
+        cmd = f"ping {param} 1 {url}"
+        response = os.system(cmd)
+        
+        if response == 0:
+            return True
+        else:
+            return False
+    except Exception as e:
+        return False
+
 def wait():
+    # Placeholder function
         x = input('Press Enter')
 
-def show_popup(message, title="TikTok Reminder"):
-    os_type = platform.system()
+# def show_popup(message, title="TikTok Reminder"):
+#     os_type = platform.system()
+# 
+#     if os_type == "Windows":
+#         # Windows: Use PowerShell to create a pop-up message box
+#         os.system(f'powershell -command "Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.Interaction]::MsgBox(\'{message}\', 0, \'{title}\')"')
+# 
+#     elif os_type == "Darwin":
+#         # macOS: Use AppleScript via osascript
+#         os.system(f'osascript -e \'display alert "{title}" message "{message}"\'')
 
-    if os_type == "Windows":
-        # Windows: Use PowerShell to create a pop-up message box
-        os.system(f'powershell -command "Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.Interaction]::MsgBox(\'{message}\', 0, \'{title}\')"')
-
-    elif os_type == "Darwin":
-        # macOS: Use AppleScript via osascript
-        os.system(f'osascript -e \'display alert "{title}" message "{message}"\'')
-        
 def entering_desired_hashtag():
     while True:
         try:
             options = int(input('1) Enter your hashtag\n2) Quit \nEnter here: '))
             if options == 1:
                 desired_hashtag = input('Please enter the hashtag you wish to search (with the # symbol as well): ')
+                # If the hashtag entered has any foreign characters to alphanumeric characters, invalidate the hashtag
                 if not re.match(r'^#[A-Za-z0-9]+$', desired_hashtag):
                         print('Invalid tag. A valid hashtag must start with # and be followed only by letters or numbers.')
                 else:
@@ -84,17 +103,20 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
 
     def accept_cookies():
         try:
+            # Locate the entire banner for the cookie policy tab
             cookies_tab_full = driver.find_element(By.XPATH, "/html/body/tiktok-cookie-banner") 
             shadow_root = driver.execute_script('return arguments[0].shadowRoot', cookies_tab_full)
+            # Access the shadow root DOM inside the banner
             element_inside_shadow = shadow_root.find_element(By.CLASS_NAME, 'button-wrapper')
             button_element = element_inside_shadow.find_element(By.CSS_SELECTOR, 'button')
+            # Click the first button that appears in HTML (in order it is 'Decline all' then 'Accept all')
             button_element.click()
         except NoSuchElementException:
-            print('No element found')
             pass
         
     def nsfw_hashtag(old_tagname):
         try:
+            # Locate the link to the community guidelines page if an NSFW hashtag is entered (will come up with a prompt)
             nsfw_guidelines_element = driver.find_element(By.CSS_SELECTOR, "a[href='https://www.tiktok.com/community-guidelines?lang=en']") 
             if nsfw_guidelines_element:
                 print(f'The hashtag {old_tagname} has no search results as it is deemed NSFW. Enter a new one.')
@@ -103,19 +125,17 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
         except NoSuchElementException:
             print('Not found')
             return False
-            wait()
             
     
     print('IMPORTANT: Every time a "Press Enter" prompt appears, please check to see if TikTok is making you perform a reCAPTCHA test.\nPlease do not touch the WebDriver tab at all unless the prompt is required to be completed, as this will break the program.')
     
     wait()  
 
-    driver = webdriver.Chrome()
     # Load the search engine browser
+    driver = webdriver.Chrome()
     # We can change the search engine to Chrome, Firefox, etc
 
     driver.get("https://www.tiktok.com")
-    
     # Load the TikTok page
 
     # The cookies of the placeholder TikTok account made for this program (strictly used only for the function of this program)
@@ -584,11 +604,12 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     nsfw = nsfw_hashtag(tagname)
     
     if nsfw:
+        # Return True to the nea.py file to quit the web scraping process
         return True
     else:
         pass
 
-    # Loading all the captions from the file
+
     # Loading all the captions from the file
     try:
         with open(captions_file_path) as f:
@@ -608,8 +629,6 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
         tags = list()  # Initialize as an empty list
         with open(captions_file_path, 'w') as f:
             pass  # Create an empty file if it doesn't exist
-
-    wait()
 
     # Loading the seen video IDs from the file
     try:
@@ -638,7 +657,6 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     resultsTab2 = resultsTab.find_element(By.CLASS_NAME, 'eegew6e0')
 
     # Gather all the videos by their individual elements
-
     postsTab = resultsTab2.find_elements(By.CLASS_NAME, 'e19c29qe19')
 
     while True:
@@ -663,46 +681,46 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     
     wait()
     
-    # '/html/body/div[7]/div/div[1]/div[1]/a' is the captcha name button
-    
-    # Iterate through each post found
-    for post in postsTab:
+    # Iterate through each post found with a loading bar
+    for post in tqdm(postsTab, desc="Processing posts"):
         # Obtain the link of every post found 
         postsTabClassName = post.find_element(By.CLASS_NAME, 'e1cg0wnj1')
         postsTabID = postsTabClassName.find_element(By.TAG_NAME, "a")
         postsTabID = postsTabID.get_attribute("href")
-
+    
         if postsTabID in seen_ids:
             continue
+        
         # Add the unseen ID to all seen IDs
         seen_ids.add(postsTabID)
         
         # Create a list of hashtags per caption in video
         postCaptions = []
+        
         # Locate the caption via all anchor elements within the caption
         caption_full = post.find_element(By.CLASS_NAME, 'etrd4pu0')
         postcaption = caption_full.find_element(By.CLASS_NAME, 'ejg0rhn1')
         postcaption = postcaption.find_elements(By.TAG_NAME, 'a')
-
+    
         # Obtain each hashtag in each post's caption
         for tag in postcaption:
-
-            print(tag)
             hashtag = tag.get_attribute("href")
+    
             # Eliminate any instances where the caption contains a link or an @ to someone's account
             if '@' in hashtag.replace('https://www.tiktok.com/tag/', ''):
                 continue
+            
             # Add only the word of the hashtag to videoCaptions
             postCaptions.append(hashtag.replace('https://www.tiktok.com/tag/', ''))
-
+    
         # Eliminate any single hashtag captions
-        if len(postCaptions)  <= 1:
+        if len(postCaptions) <= 1:
             continue
         
         # Filter the captions to have no duplicates and be all lowercase
         postCaptions = list(dict.fromkeys(postCaptions))
         postCaptions = [hashtag.lower() for hashtag in postCaptions]
-
+    
         # Append them to the total list of all captions
         tags.append(postCaptions)
         
