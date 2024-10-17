@@ -1,4 +1,5 @@
 # Importing all necessary libraries
+from selenium.common.exceptions import NoSuchWindowException, WebDriverException
 from webscraping import *
 from hashtag_network import *
 
@@ -8,10 +9,10 @@ file_existing = False
 while True:
     try:
         with open(captions_file_path) as f:
-            file_existing = True
+            file_existing = True if (f.readline().strip()) else False
         with open(seenids_file_path) as f:
-            file_existing = True
-    except FileNotFoundError:
+            file_existing = True if (f.readline().strip()) else False
+    except FileNotFoundError or json.JSONDecodeError:
         file_existing = False
         
     script = f'''
@@ -38,13 +39,18 @@ Enter here: '''
                 continue
             else:
                 # If the ping response is valid, run the web scraping function
-                web_scrape(tagname, captions_file_path, seenids_file_path)
+                try:
+                    web_scrape(tagname, captions_file_path, seenids_file_path)
+                except (NoSuchWindowException, WebDriverException):
+                    print('The WebDriver tab has closed for some reason. Please re-run step 1.')
+                    wait()
+                    continue
         elif option == 2:
             try:
                 network_creation(tagname, captions_file_path)
             except FileNotFoundError:
                 # If the hashtag entered has no files, then invalidate the option being entered
-                print(f'Please run Step 1 first with {tagname} as there are no files for this hashtag.')
+                print(f'Please run Step 1 first with {tagname} as there are no files/data for this hashtag.')
                 wait()
         elif option == 3:
             # Quits the program
