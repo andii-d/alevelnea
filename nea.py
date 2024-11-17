@@ -42,7 +42,7 @@ Enter here: '''
                 try:
                     web_scrape(tagname, captions_file_path, seenids_file_path)
                 except (NoSuchWindowException, WebDriverException):
-                    print('The WebDriver tab has closed for some reason. Please re-run step 1.')
+                    print('The WebDriver tab has closed unexpectedly. Please re-run step 1.')
                     wait()
                     continue
         elif option == 2:
