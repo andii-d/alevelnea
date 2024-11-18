@@ -8,13 +8,12 @@ from matplotlib.colors import Normalize
 from os import chmod
 from os.path import exists
 from fa2_modified import ForceAtlas2 as fa2
+from pyvis.network import Network
 from webscraping import wait, script_dir
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-import igraph
-import requests
 
 def network_creation(tagname, captions_file_path):
 
@@ -176,38 +175,74 @@ def network_creation(tagname, captions_file_path):
 
     # Sort nodes by their frequency of occurrence and get the top 20 most frequent nodes
     top_20_nodes_overall = sorted(node_occurrences.keys(), key=lambda x: node_occurrences[x], reverse=True)[:20]
+    print(top_20_nodes_overall)
     
-    forceatlas2 = fa2(
-        outboundAttractionDistribution=True,
-        linLogMode=False,
-        adjustSizes=False,
-        edgeWeightInfluence=1.0,
-        jitterTolerance=1.0,
-        barnesHutOptimize=True,
-        barnesHutTheta=1.2,
-        scalingRatio=2.0,
-        strongGravityMode=False,
-        gravity=1.0,
-        verbose=True
-    )
+    def plot_fa2(graph, top_nodes, expansion_factor=1.0):
+        # Initialize ForceAtlas2
+        forceatlas2 = fa2(
+            outboundAttractionDistribution=True,  # Prevent hubs from attracting too much
+            linLogMode=False,
+            adjustSizes=False,
+            edgeWeightInfluence=1.0,
+            jitterTolerance=1.0,
+            barnesHutOptimize=True,
+            barnesHutTheta=1.2,
+            scalingRatio=2.0,
+            strongGravityMode=False,
+            gravity=1.0,
+            verbose=True
+        )
 
-    # Generate positions with ForceAtlas2
-    positions = forceatlas2.forceatlas2_networkx_layout(hashtag_graph, pos=None, iterations=25000)
+        # Generate positions using ForceAtlas2
+        positions = forceatlas2.forceatlas2_networkx_layout(graph, pos=None, iterations=2500)
 
-    # Step 2: Apply an expansion factor to spread out the nodes
-    expansion_factor = 20.0  # Adjust this factor as needed (e.g., 1.5, 2.0, etc.)
-    expanded_positions = {node: (pos[0] * expansion_factor, pos[1] * expansion_factor) for node, pos in positions.items()}
+        # Apply expansion factor (scaling positions)
+        expanded_positions = {
+            node: (pos[0] * expansion_factor, pos[1] * expansion_factor)
+            for node, pos in positions.items()
+        }
 
-    # Step 3: Plot the expanded graph
-    plt.figure(figsize=(12, 12))
-    nx.draw_networkx_nodes(hashtag_graph, expanded_positions, node_size=20, node_color="blue", alpha=0.4)
-    nx.draw_networkx_edges(hashtag_graph, expanded_positions, alpha=0.2, edge_color="gray")
-    nx.draw_networkx_labels(hashtag_graph, expanded_positions, font_size=8, font_color="black")
-    plt.axis("off")
+        # Plot the graph
+        plt.figure(figsize=(12, 12))
 
-    # Save the figure as a PDF
-    plt.savefig(f"{script_dir}/expanded_graph.pdf")
-    plt.show()
+        # Separate top nodes and other nodes
+        if top_nodes is None:
+            top_nodes = []
+
+        other_nodes = [node for node in graph.nodes if node not in top_nodes]
+
+        # Draw other nodes
+        nx.draw_networkx_nodes(
+            graph,
+            expanded_positions,
+            nodelist=other_nodes,
+            node_size=20,
+            node_color="blue",
+            alpha=0.6
+        )
+
+        # Draw top nodes
+        nx.draw_networkx_nodes(
+            graph,
+            expanded_positions,
+            nodelist=top_nodes,
+            node_size=100,
+            node_color="red",
+            alpha=0.9
+        )
+
+        # Draw edges
+        nx.draw_networkx_edges(graph, expanded_positions, alpha=0.4, edge_color="black")
+
+        # Add labels for top nodes
+        nx.draw_networkx_labels(graph, expanded_positions, labels={node: node for node in top_nodes}, font_size=10, font_color="black")
+
+        # Display plot
+        plt.axis("off")
+        plt.title("ForceAtlas2 Graph with Highlighted Nodes")
+        plt.show()
+        
+    plot_fa2(hashtag_graph, top_20_nodes_overall, expansion_factor=100)
 
     while True:
         export_to_gephi = input('Would you like to export to Gephi?\nEnter Y/N: ').lower()
