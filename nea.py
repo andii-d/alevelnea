@@ -19,15 +19,21 @@ while True:
 Welcome! This program obtains the optimal hashtags to put in your TikTok caption for your videos based on the content that you make.
 
 An internet connection is *REQUIRED* for Step 1. {'Run this step first please, as ' + tagname + ' it is the first time it has been entered.' if not file_existing else ''}
-{'\nDue to files for '+ tagname + ' already existing,' + ' if the files are empty then please run Step 1.' + '\nOtherwise, run Step 2 to calculate your list of hashtags if not done already.' + '\nThere is a saved list of hashtags in the same directory as the program, if both steps are done.'  if file_existing else ''} 
+{(
+    'Due to files for ' + tagname + ' already existing,'
+    + ' if the files are empty then please run Step 1.'
+    + 'Otherwise, run Step 2 to calculate your list of hashtags if not done already.'
+    + 'There is a saved list of hashtags in the same directory as the program, if both steps are done.'
+    ) if file_existing else ''}
 Enter your choice below:
 
 1) Step 1: Gathering the data for {tagname}
-2) Step 2: Calculating the list of hashtags from {tagname} to put in your caption 
+2) Step 2: Calculating the list of hashtags from {tagname} to put in your caption
 3) Quit the program
 4) Return to start menu
 
 Enter here: '''
+
 # 'script' uses conditional statements through the use of f strings to detect existing files 
     try:
         option = int(input(script))
