@@ -6,7 +6,6 @@ from selenium.common.exceptions import NoSuchElementException
 from os.path import abspath, dirname, exists, join
 from tqdm import tqdm
 import os
-import platform
 import re
 import time
 import json
