@@ -177,9 +177,9 @@ def network_creation(tagname, captions_file_path):
     top_20_nodes_overall = sorted(node_occurrences.keys(), key=lambda x: node_occurrences[x], reverse=True)[:20]
     
     def plot_fa2(graph, top_nodes, expansion_factor=100, output_file=f'{tagname}_graph.pdf'):
-        # Initialize ForceAtlas2
+        # Initialize the parameters for the ForceAtlas2 algorithm
         forceatlas2 = fa2(
-            outboundAttractionDistribution=True,  # Prevent hubs from attracting too much
+            outboundAttractionDistribution=True,  # Prevent node hubs from attracting too strongly 
             linLogMode=False,
             adjustSizes=False,
             edgeWeightInfluence=1.0,
@@ -189,7 +189,7 @@ def network_creation(tagname, captions_file_path):
             scalingRatio=2.0,
             strongGravityMode=False,
             gravity=1.0,
-            verbose=True
+            verbose=False # Disable any verbose log information (not necessary)
         )
 
         # Generate positions using ForceAtlas2
@@ -238,7 +238,7 @@ def network_creation(tagname, captions_file_path):
             graph,
             expanded_positions,
             labels={node: node for node in top_nodes},
-            font_size=10,  # Larger font size for red nodes
+            font_size=10,  # Larger font size for red (top) nodes
             font_color="black"
         )
 
@@ -247,22 +247,23 @@ def network_creation(tagname, captions_file_path):
             graph,
             expanded_positions,
             labels={node: node for node in other_nodes},
-            font_size=7,  # Smaller font size for blue nodes
+            font_size=7,  # Smaller font size for blue (other) nodes
             font_color="black"
         )
 
         # Display plot
         plt.axis("off")
-        plt.title(f"#{tagname} Graph Visualisation - Top 20 Nodes (red)")
-        plt.savefig(f'{script_dir}/{output_file}', format="pdf", bbox_inches="tight")
-        plt.show()
+        plt.title(f"#{tagname} Graph Visualisation - Top 20 Nodes (red)") # Title the name of the graph file based on the hashtag name
+        plt.savefig(f'{script_dir}/{output_file}', format="pdf", bbox_inches="tight") # Capture the graph such that it is not cut off in the image
+        input('WARNING: The program will only continue once you close the graph window. \nYou may save the file to wherever else you wish, however it is already saved for you in the same directory as the program.\n\nPress Enter to continue')
+        plt.show() # Launch a matplotlib window to view the graph in real time then close if wanted
 
     plot_fa2(hashtag_graph, top_20_nodes_overall, expansion_factor=100, output_file=f'{tagname}_graph.pdf')
 
     while True:
         export_to_gephi = input('Would you like to export to Gephi?\nEnter Y/N: ').lower()
         if export_to_gephi == 'y':
-            nx.write_gexf(hashtag_graph, f'{script_dir}/{tagname}graph.gexf')  # Creates a .gexf file to view in network graphing software
+            nx.write_gexf(hashtag_graph, f'{script_dir}/{tagname}graph.gexf')  # Creates a .gexf file to view in network graphing software such as Gephi
             print('Exported!')
             break
         elif export_to_gephi == 'n':
