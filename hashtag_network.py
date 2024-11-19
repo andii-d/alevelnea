@@ -175,9 +175,8 @@ def network_creation(tagname, captions_file_path):
 
     # Sort nodes by their frequency of occurrence and get the top 20 most frequent nodes
     top_20_nodes_overall = sorted(node_occurrences.keys(), key=lambda x: node_occurrences[x], reverse=True)[:20]
-    print(top_20_nodes_overall)
     
-    def plot_fa2(graph, top_nodes, expansion_factor=1.0):
+    def plot_fa2(graph, top_nodes, expansion_factor=100, output_file=f'{tagname}_graph.pdf'):
         # Initialize ForceAtlas2
         forceatlas2 = fa2(
             outboundAttractionDistribution=True,  # Prevent hubs from attracting too much
@@ -194,7 +193,7 @@ def network_creation(tagname, captions_file_path):
         )
 
         # Generate positions using ForceAtlas2
-        positions = forceatlas2.forceatlas2_networkx_layout(graph, pos=None, iterations=2500)
+        positions = forceatlas2.forceatlas2_networkx_layout(graph, pos=None, iterations=25000)
 
         # Apply expansion factor (scaling positions)
         expanded_positions = {
@@ -217,7 +216,7 @@ def network_creation(tagname, captions_file_path):
             expanded_positions,
             nodelist=other_nodes,
             node_size=20,
-            node_color="blue",
+            node_color="#5d96f0",
             alpha=0.6
         )
 
@@ -232,17 +231,33 @@ def network_creation(tagname, captions_file_path):
         )
 
         # Draw edges
-        nx.draw_networkx_edges(graph, expanded_positions, alpha=0.4, edge_color="black")
+        nx.draw_networkx_edges(graph, expanded_positions, alpha=0.4, edge_color="#757575")
 
         # Add labels for top nodes
-        nx.draw_networkx_labels(graph, expanded_positions, labels={node: node for node in top_nodes}, font_size=10, font_color="black")
+        nx.draw_networkx_labels(
+            graph,
+            expanded_positions,
+            labels={node: node for node in top_nodes},
+            font_size=10,  # Larger font size for red nodes
+            font_color="black"
+        )
+
+        # Add labels for other nodes (blue)
+        nx.draw_networkx_labels(
+            graph,
+            expanded_positions,
+            labels={node: node for node in other_nodes},
+            font_size=7,  # Smaller font size for blue nodes
+            font_color="black"
+        )
 
         # Display plot
         plt.axis("off")
-        plt.title("ForceAtlas2 Graph with Highlighted Nodes")
+        plt.title(f"#{tagname} Graph Visualisation - Top 20 Nodes (red)")
+        plt.savefig(f'{script_dir}/{output_file}', format="pdf", bbox_inches="tight")
         plt.show()
-        
-    plot_fa2(hashtag_graph, top_20_nodes_overall, expansion_factor=100)
+
+    plot_fa2(hashtag_graph, top_20_nodes_overall, expansion_factor=100, output_file=f'{tagname}_graph.pdf')
 
     while True:
         export_to_gephi = input('Would you like to export to Gephi?\nEnter Y/N: ').lower()
