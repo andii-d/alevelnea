@@ -20,34 +20,25 @@ def ping_website(url):
         cmd = f"ping {param} 1 {url}"
         response = os.system(cmd)
         
+        # If exit code is 0, state that there is an internet connection
         if response == 0:
             return True
         else:
             return False
+    # If there is any error as to why the internet connection did not work immediately, return that there is no internet connection
     except Exception as e:
         return False
 
 def wait():
     # Placeholder function
-        x = input('Press Enter')
-
-# def show_popup(message, title="TikTok Reminder"):
-#     os_type = platform.system()
-# 
-#     if os_type == "Windows":
-#         # Windows: Use PowerShell to create a pop-up message box
-#         os.system(f'powershell -command "Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.Interaction]::MsgBox(\'{message}\', 0, \'{title}\')"')
-# 
-#     elif os_type == "Darwin":
-#         # macOS: Use AppleScript via osascript
-#         os.system(f'osascript -e \'display alert "{title}" message "{message}"\'')
+    input('Press Enter')
 
 def entering_desired_hashtag():
     while True:
         try:
             options = int(input('1) Enter your hashtag\n2) Quit \nEnter here: '))
             if options == 1:
-                desired_hashtag = input('Please enter the hashtag you wish to search (with the # symbol as well): ')
+                desired_hashtag = input('Please enter the hashtag you wish to search: ')
                 # If the hashtag entered has any foreign characters to alphanumeric characters, invalidate the hashtag
                 if not re.match(r'^#[A-Za-z0-9]+$', desired_hashtag):
                         print('Invalid tag. A valid hashtag must start with # and be followed only by letters or numbers.')
@@ -85,21 +76,9 @@ hashtag_filename_captions = f'{tagname}captions.json'
 hashtag_filename_seenids = f'{tagname}seenids.json'
 captions_file_path = join(script_dir, hashtag_filename_captions)
 seenids_file_path = join(script_dir, hashtag_filename_seenids)
-print(captions_file_path)
 
 
 def web_scrape(tagname, captions_file_path, seenids_file_path):
-#     def disable_all_input():
-#         driver.execute_script("""
-# document.addEventListener('mousedown', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-# document.addEventListener('mouseup', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-# document.addEventListener('click', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-# document.addEventListener('dblclick', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-# document.addEventListener('keydown', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-# document.addEventListener('keyup', function(e) { e.stopPropagation(); e.preventDefault(); }, true);
-# """)
-#         print('Overlay Added')
-
     def accept_cookies():
         try:
             # Locate the entire banner for the cookie policy tab
@@ -122,11 +101,11 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
                 wait()
                 return True
         except NoSuchElementException:
-            print('Not found')
+            print('Hashtag is not NSFW')
             return False
             
     
-    print('IMPORTANT: Every time a "Press Enter" prompt appears, please check to see if TikTok is making you perform a reCAPTCHA test.\nPlease do not touch the WebDriver tab at all unless the prompt is required to be completed, as this will break the program.')
+    #print('IMPORTANT: Every time a "Press Enter" prompt appears, please check to see if TikTok is making you perform a reCAPTCHA test.\nPlease do not touch the WebDriver tab at all unless the prompt is required to be completed, as this will break the program.')
     
     wait()  
 
@@ -585,7 +564,10 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     
     # To find the search button, we will use the find_element function to insert the target hashtag
     
-    search_bar = driver.find_element(By.XPATH, '/html/body/div[1]/div[1]/div/div[2]/div/form/input')
+    button_search_bar = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[1]/div/div[2]/div[2]/button')
+    button_search_bar.click()
+    
+    search_bar = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[1]/div/div[4]/div[1]/div[2]/form/input')
     # Enter the desired hashtag
     search_bar.send_keys(tagname)
     search_bar.send_keys(Keys.ENTER)
@@ -673,11 +655,6 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
         except NoSuchElementException:
             pass
         
-        # if len(postsTab) == postsTabSize: # If the size of the current posts loaded is the same as the amount of all the posts together, break out the loop
-        #     break
-        # else:
-        #     postsTabSize = len(postsTab) # Update the current amount of videos found under the hashtag
-    
     wait()
     
     # Iterate through each post found with a loading bar
