@@ -15,6 +15,96 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 
+def plot_fa2(tagname, graph, top_nodes, expansion_factor=100, output_file=None):
+    if output_file is None:  # Set default output file dynamically if not provided
+        output_file = f'{tagname}_graph.pdf'
+        # Initialize the parameters for the ForceAtlas2 algorithm
+    forceatlas2 = fa2(
+        outboundAttractionDistribution=True,  # Prevent node hubs from attracting too strongly 
+        linLogMode=False,
+        adjustSizes=False,
+        edgeWeightInfluence=1.0,
+        jitterTolerance=1.0,
+        barnesHutOptimize=True,
+        barnesHutTheta=1.2,
+        scalingRatio=2.0,
+        strongGravityMode=False,
+        gravity=1.0,
+        verbose=False # Disable any verbose log information (not necessary)
+    )
+    # Generate positions using ForceAtlas2
+    positions = forceatlas2.forceatlas2_networkx_layout(graph, pos=None, iterations=25000)
+    # Apply expansion factor (scaling positions)
+    expanded_positions = {
+        node: (pos[0] * expansion_factor, pos[1] * expansion_factor)
+        for node, pos in positions.items()
+    }
+    # Plot the graph
+    plt.figure(figsize=(12, 12))
+    # Separate top nodes and other nodes
+    if top_nodes is None:
+        top_nodes = []
+    other_nodes = [node for node in graph.nodes if node not in top_nodes]
+    # Draw other nodes
+    nx.draw_networkx_nodes(
+        graph,
+        expanded_positions,
+        nodelist=other_nodes,
+        node_size=20,
+        node_color="#5d96f0",
+        alpha=0.6
+    )
+    # Draw top nodes
+    nx.draw_networkx_nodes(
+        graph,
+        expanded_positions,
+        nodelist=top_nodes,
+        node_size=100,
+        node_color="red",
+        alpha=0.9
+    )
+    # Draw edges
+    nx.draw_networkx_edges(graph, expanded_positions, alpha=0.4, edge_color="#757575")
+    # Add labels for top nodes
+    nx.draw_networkx_labels(
+        graph,
+        expanded_positions,
+        labels={node: node for node in top_nodes},
+        font_size=10,  # Larger font size for red (top) nodes
+        font_color="black"
+    )
+    # Add labels for other nodes (blue)
+    nx.draw_networkx_labels(
+        graph,
+        expanded_positions,
+        labels={node: node for node in other_nodes},
+        font_size=7,  # Smaller font size for blue (other) nodes
+        font_color="black"
+    )
+    # Display plot
+    plt.axis("off")
+    plt.title(f"#{tagname} Graph Visualisation - Top 20 Nodes (red)") # Title the name of the graph file based on the hashtag name
+    input('WARNING: The program will only continue once you close the graph window. \nYou may save the file to wherever else you wish, however it is already saved for you in the same directory as the program.\n\nPress Enter to continue')
+    if exists((f'{script_dir}/{tagname}_graph.pdf')):
+        print('A file for your graph already exists!')
+    else:
+        plt.savefig(f'{script_dir}/{output_file}', format="pdf", bbox_inches="tight") # Capture the graph such that it is not cut off in the image
+    plt.show() # Launch a matplotlib window to view the graph in real time then close if wanted
+
+def view_graph(tagname, graph, top_nodes, expansion_factor=100, output_file=None):
+    if graph is None: # Retrieve graph file to review
+        graph = nx.read_gml(f'{script_dir}/{tagname}graph.gml')
+    
+    if top_nodes is None: # Retrieve top 20 nodes list
+        top_nodes = []
+        with open(f'{script_dir}/{tagname}_top_20_list.txt') as f:
+            top_nodes = [(line.strip())[1:] for line in f]
+    
+    if output_file is None:  # Set default output file
+        output_file = f'{tagname}_graph.pdf'
+    plot_fa2(tagname, graph, top_nodes, expansion_factor, output_file)
+
+
 def network_creation(tagname, captions_file_path):
 
     with open(captions_file_path) as f:
@@ -175,90 +265,10 @@ def network_creation(tagname, captions_file_path):
 
     # Sort nodes by their frequency of occurrence and get the top 20 most frequent nodes
     top_20_nodes_overall = sorted(node_occurrences.keys(), key=lambda x: node_occurrences[x], reverse=True)[:20]
-    
-    def plot_fa2(graph, top_nodes, expansion_factor=100, output_file=f'{tagname}_graph.pdf'):
-        # Initialize the parameters for the ForceAtlas2 algorithm
-        forceatlas2 = fa2(
-            outboundAttractionDistribution=True,  # Prevent node hubs from attracting too strongly 
-            linLogMode=False,
-            adjustSizes=False,
-            edgeWeightInfluence=1.0,
-            jitterTolerance=1.0,
-            barnesHutOptimize=True,
-            barnesHutTheta=1.2,
-            scalingRatio=2.0,
-            strongGravityMode=False,
-            gravity=1.0,
-            verbose=False # Disable any verbose log information (not necessary)
-        )
 
-        # Generate positions using ForceAtlas2
-        positions = forceatlas2.forceatlas2_networkx_layout(graph, pos=None, iterations=25000)
+    nx.write_gml(hashtag_graph, f'{script_dir}/{tagname}graph.gml') # To read the graph in the future
 
-        # Apply expansion factor (scaling positions)
-        expanded_positions = {
-            node: (pos[0] * expansion_factor, pos[1] * expansion_factor)
-            for node, pos in positions.items()
-        }
-
-        # Plot the graph
-        plt.figure(figsize=(12, 12))
-
-        # Separate top nodes and other nodes
-        if top_nodes is None:
-            top_nodes = []
-
-        other_nodes = [node for node in graph.nodes if node not in top_nodes]
-
-        # Draw other nodes
-        nx.draw_networkx_nodes(
-            graph,
-            expanded_positions,
-            nodelist=other_nodes,
-            node_size=20,
-            node_color="#5d96f0",
-            alpha=0.6
-        )
-
-        # Draw top nodes
-        nx.draw_networkx_nodes(
-            graph,
-            expanded_positions,
-            nodelist=top_nodes,
-            node_size=100,
-            node_color="red",
-            alpha=0.9
-        )
-
-        # Draw edges
-        nx.draw_networkx_edges(graph, expanded_positions, alpha=0.4, edge_color="#757575")
-
-        # Add labels for top nodes
-        nx.draw_networkx_labels(
-            graph,
-            expanded_positions,
-            labels={node: node for node in top_nodes},
-            font_size=10,  # Larger font size for red (top) nodes
-            font_color="black"
-        )
-
-        # Add labels for other nodes (blue)
-        nx.draw_networkx_labels(
-            graph,
-            expanded_positions,
-            labels={node: node for node in other_nodes},
-            font_size=7,  # Smaller font size for blue (other) nodes
-            font_color="black"
-        )
-
-        # Display plot
-        plt.axis("off")
-        plt.title(f"#{tagname} Graph Visualisation - Top 20 Nodes (red)") # Title the name of the graph file based on the hashtag name
-        plt.savefig(f'{script_dir}/{output_file}', format="pdf", bbox_inches="tight") # Capture the graph such that it is not cut off in the image
-        input('WARNING: The program will only continue once you close the graph window. \nYou may save the file to wherever else you wish, however it is already saved for you in the same directory as the program.\n\nPress Enter to continue')
-        plt.show() # Launch a matplotlib window to view the graph in real time then close if wanted
-
-    plot_fa2(hashtag_graph, top_20_nodes_overall, expansion_factor=100, output_file=f'{tagname}_graph.pdf')
+    plot_fa2(tagname, hashtag_graph, top_20_nodes_overall, expansion_factor=100, output_file=f'{tagname}_graph.pdf')
 
     while True:
         export_to_gephi = input('Would you like to export to Gephi?\nEnter Y/N: ').lower()
