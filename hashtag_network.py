@@ -8,7 +8,6 @@ from matplotlib.colors import Normalize
 from os import chmod
 from os.path import exists
 from fa2_modified import ForceAtlas2 as fa2
-from pyvis.network import Network
 from webscraping import wait, script_dir
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -103,7 +102,67 @@ def view_graph(tagname, graph, top_nodes, expansion_factor=100, output_file=None
     if output_file is None:  # Set default output file
         output_file = f'{tagname}_graph.pdf'
     plot_fa2(tagname, graph, top_nodes, expansion_factor, output_file)
+    
+# Calculate centrality values
+def calculate_betweenness_centrality(adj_matrix):
+    n = adj_matrix.shape[0]
+    betweenness = {i: 0.0 for i in range(n)}
+    # Progress bar for betweenness calculation
+    for s in tqdm(range(n), desc="Calculating Betweenness Centrality", unit="node", total=n):
+        stack = []
+        predecessors = [[] for _ in range(n)]
+        sigma = np.zeros(n)
+        sigma[s] = 1
+        dist = -np.ones(n)
+        dist[s] = 0
+        queue = [s]
+        while queue:
+            v = queue.pop(0)
+            stack.append(v)
+            for w in range(n):
+                if adj_matrix[v, w] > 0:
+                    if dist[w] < 0:
+                        queue.append(w)
+                        dist[w] = dist[v] + 1
+                    if dist[w] == dist[v] + 1:
+                        sigma[w] += sigma[v]
+                        predecessors[w].append(v)
+        delta = np.zeros(n)
+        while stack:
+            w = stack.pop()
+            for v in predecessors[w]:
+                delta[v] += (sigma[v] / sigma[w]) * (1 + delta[w])
+            if w != s:
+                betweenness[w] += delta[w]
+    betweenness = {node: bc / 2 for node, bc in betweenness.items()}
+    return betweenness
 
+def calculate_closeness_centrality(adj_matrix):
+        n = adj_matrix.shape[0]
+        closeness = {i: 0.0 for i in range(n)}
+
+        # Progress bar for closeness calculation
+        for i in tqdm(range(n), desc="Calculating Closeness Centrality", unit="node", total=n):
+            shortest_paths = np.full(n, np.inf)
+            shortest_paths[i] = 0
+            visited = np.zeros(n, dtype=bool)
+            queue = [i]
+
+            while queue:
+                v = queue.pop(0)
+                visited[v] = True
+                for w in range(n):
+                    if adj_matrix[v, w] > 0 and not visited[w]:
+                        new_dist = shortest_paths[v] + 1
+                        if new_dist < shortest_paths[w]:
+                            shortest_paths[w] = new_dist
+                            queue.append(w)
+
+            sum_distances = np.sum(shortest_paths[shortest_paths != np.inf])
+            if sum_distances > 0:
+                closeness[i] = (n - 1) / sum_distances
+
+        return closeness
 
 def network_creation(tagname, captions_file_path):
 
@@ -140,7 +199,6 @@ def network_creation(tagname, captions_file_path):
     # Extract the largest connected component
     hashtag_graph = hashtag_graph.subgraph(max(nx.connected_components(hashtag_graph), key=len))
 
-
     n = hashtag_graph.number_of_nodes()
     e = hashtag_graph.number_of_edges()
 
@@ -157,71 +215,6 @@ def network_creation(tagname, captions_file_path):
         i, j = label_to_index[u], label_to_index[v]
         adj_matrix[i, j] = adj_matrix[j, i] = 1  # Assuming undirected graph
 
-    # Calculate centrality values
-    def calculate_betweenness_centrality(adj_matrix):
-        n = adj_matrix.shape[0]
-        betweenness = {i: 0.0 for i in range(n)}
-
-        # Progress bar for betweenness calculation
-        for s in tqdm(range(n), desc="Calculating Betweenness Centrality", unit="node", total=n):
-            stack = []
-            predecessors = [[] for _ in range(n)]
-            sigma = np.zeros(n)
-            sigma[s] = 1
-            dist = -np.ones(n)
-            dist[s] = 0
-            queue = [s]
-
-            while queue:
-                v = queue.pop(0)
-                stack.append(v)
-                for w in range(n):
-                    if adj_matrix[v, w] > 0:
-                        if dist[w] < 0:
-                            queue.append(w)
-                            dist[w] = dist[v] + 1
-                        if dist[w] == dist[v] + 1:
-                            sigma[w] += sigma[v]
-                            predecessors[w].append(v)
-
-            delta = np.zeros(n)
-            while stack:
-                w = stack.pop()
-                for v in predecessors[w]:
-                    delta[v] += (sigma[v] / sigma[w]) * (1 + delta[w])
-                if w != s:
-                    betweenness[w] += delta[w]
-
-        betweenness = {node: bc / 2 for node, bc in betweenness.items()}
-        return betweenness
-
-    def calculate_closeness_centrality(adj_matrix):
-        n = adj_matrix.shape[0]
-        closeness = {i: 0.0 for i in range(n)}
-
-        # Progress bar for closeness calculation
-        for i in tqdm(range(n), desc="Calculating Closeness Centrality", unit="node", total=n):
-            shortest_paths = np.full(n, np.inf)
-            shortest_paths[i] = 0
-            visited = np.zeros(n, dtype=bool)
-            queue = [i]
-
-            while queue:
-                v = queue.pop(0)
-                visited[v] = True
-                for w in range(n):
-                    if adj_matrix[v, w] > 0 and not visited[w]:
-                        new_dist = shortest_paths[v] + 1
-                        if new_dist < shortest_paths[w]:
-                            shortest_paths[w] = new_dist
-                            queue.append(w)
-
-            sum_distances = np.sum(shortest_paths[shortest_paths != np.inf])
-            if sum_distances > 0:
-                closeness[i] = (n - 1) / sum_distances
-
-        return closeness
-
     # Calculate centrality measures with progress tracking in the functions
     betweenness_centrality = calculate_betweenness_centrality(adj_matrix)
     closeness_centrality = calculate_closeness_centrality(adj_matrix)
@@ -231,7 +224,6 @@ def network_creation(tagname, captions_file_path):
     # Map results back to original labels
     betweenness_centrality = {index_to_label[i]: bc for i, bc in betweenness_centrality.items()}
     closeness_centrality = {index_to_label[i]: cc for i, cc in closeness_centrality.items()}
-
 
     # Sort and get the top 20 highest betweenness centrality nodes
     top_20_betweenness = [node for node, _ in sorted(betweenness_centrality.items(), key=lambda x: x[1], reverse=True)[:20]]
