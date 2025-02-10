@@ -77,7 +77,6 @@ hashtag_filename_seenids = f'{tagname}seenids.json'
 captions_file_path = join(script_dir, hashtag_filename_captions)
 seenids_file_path = join(script_dir, hashtag_filename_seenids)
 
-
 def web_scrape(tagname, captions_file_path, seenids_file_path):
     def accept_cookies():
         try:
@@ -103,18 +102,15 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
         except NoSuchElementException:
             print('Hashtag is not NSFW')
             return False
-            
-    
-    #print('IMPORTANT: Every time a "Press Enter" prompt appears, please check to see if TikTok is making you perform a reCAPTCHA test.\nPlease do not touch the WebDriver tab at all unless the prompt is required to be completed, as this will break the program.')
-    
+                
     wait()  
 
     # Load the search engine browser
     driver = webdriver.Chrome()
     # We can change the search engine to Chrome, Firefox, etc
 
-    driver.get("https://www.tiktok.com")
     # Load the TikTok page
+    driver.get("https://www.tiktok.com")
 
     # The cookies of the placeholder TikTok account made for this program (strictly used only for the function of this program)
     
@@ -560,18 +556,18 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     driver.refresh()
     # After having refreshed the page, your WebDriver instance should have logged into the account
     accept_cookies()
-    wait()
+    time.sleep(5), wait()
     
     # To find the search button, we will use the find_element function to insert the target hashtag
-    
     button_search_bar = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[1]/div/div[2]/div[2]/button')
     button_search_bar.click()
     
-    search_bar = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[1]/div/div[4]/div[1]/div[2]/form/input')
+    search_bar = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[1]/div/div[5]/div[1]/div[2]/form/input')
     # Enter the desired hashtag
     search_bar.send_keys(tagname)
     search_bar.send_keys(Keys.ENTER)
     
+    # In case the earlier attempt never worked
     accept_cookies()
     wait()
     
@@ -589,7 +585,6 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
         return True
     else:
         pass
-
 
     # Loading all the captions from the file
     try:
@@ -635,17 +630,17 @@ def web_scrape(tagname, captions_file_path, seenids_file_path):
     
     # Locate the element of the video tab itself which contains the video element objects
     resultsTab = driver.find_element(By.CLASS_NAME, 'eegew6e2')
-    resultsTab2 = resultsTab.find_element(By.CLASS_NAME, 'eegew6e0')
+    #resultsTab2 = resultsTab.find_element(By.CLASS_NAME, 'eegew6e2')
 
     # Gather all the videos by their individual elements
-    postsTab = resultsTab2.find_elements(By.CLASS_NAME, 'e19c29qe19')
+    postsTab = resultsTab.find_elements(By.CLASS_NAME, 'e19c29qe9')
 
     while True:
         # Scrolls to the bottom of the page automatically
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         time.sleep(5) # Every 5 seconds, gather all the video objects currently loaded
-        postsTab = resultsTab.find_elements(By.CLASS_NAME, 'e19c29qe19')
-        print(len(postsTab), 'postsTab')
+        postsTab = resultsTab.find_elements(By.CLASS_NAME, 'e19c29qe9')
+        print(len(postsTab), 'posts found')
         try:
             end_result = driver.find_element(By.XPATH, '/html/body/div[1]/div[2]/div[2]/div/div[2]/div/div[2]')
             if end_result.text == 'No more results' or 'No more videos':
