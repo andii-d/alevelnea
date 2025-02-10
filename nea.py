@@ -6,7 +6,6 @@ from hashtag_network import *
 # Boolean variable used for F string condition statement
 file_existing = False
 
-
 while True:
     try:
         with open(captions_file_path) as f:
@@ -15,7 +14,7 @@ while True:
             file_existing = True if (f.readline().strip()) else False
     except FileNotFoundError or json.JSONDecodeError:
         file_existing = False
-        
+
     script = f'''
 Welcome! This program obtains the optimal hashtags to put in your TikTok caption for your videos based on the content that you make.
 
@@ -45,6 +44,7 @@ Enter here: '''
                 wait()
                 continue
             else:
+                print('Connected to the internet.')
                 # If the ping response is valid, run the web scraping function
                 try:
                     web_scrape(tagname, captions_file_path, seenids_file_path)
@@ -76,7 +76,3 @@ Enter here: '''
         # If the option entered is not a number, remind the user to enter a number
         print('Enter a number please.')
         continue
-        
-
-# enter code to force the user to do the reCAPTCHA test but then before and after the test, disable any possible human interaction with the webdriver tab
-# break down tests even further such that the user will enter a hashtag but not search first, and calculate the hashtags etc first
